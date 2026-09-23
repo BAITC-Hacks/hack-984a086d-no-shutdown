@@ -1,10 +1,10 @@
 {
-  "id": 2,
+  "id": 31,
   "status": "succeeded",
   "mode": "live",
   "reused": false,
-  "issued_at": "2026-09-23T12:24:59.956371+00:00",
-  "checked_at": "2026-09-23T12:24:59.956371+00:00",
+  "issued_at": "2026-09-23T12:31:35.385645+00:00",
+  "checked_at": "2026-09-23T12:31:35.385645+00:00",
   "forecast_start": "2026-09-23T13:00:00+00:00",
   "forecast_end": "2026-09-25T13:00:00+00:00",
   "horizon_hours": 48,
@@ -14,7 +14,7 @@
     "trained_at": "2026-01-31T19:00:00+00:00",
     "age_days": 234,
     "age_warning": true,
-    "hash": "8ac1a9a3bfcb4d6d3a4a0c215f374c9cdc4efabc5d16c88708b318e10137e5c4",
+    "hash": "9fe3dde44e4851de3117be422996563870bdd31ff4087f2eae777d979102b769",
     "availability_cutoff": "2026-01-31T19:00:00Z"
   },
   "capacity": {
@@ -46,10 +46,10 @@
         "longitude": 78.535604
       },
       "current": {
-        "valid_time": "2026-09-23T12:15:00+00:00",
-        "wind_speed_10m": 4.31,
-        "wind_speed_100m": 6.53,
-        "temperature_2m": 24.5
+        "valid_time": "2026-09-23T12:30:00+00:00",
+        "wind_speed_10m": 4.17,
+        "wind_speed_100m": 6.86,
+        "temperature_2m": 23.9
       },
       "provenance": {
         "source": "Open-Meteo Forecast API",
@@ -61,8 +61,8 @@
           "latitude": 43.620384,
           "longitude": 78.47891
         },
-        "retrieved_at": "2026-09-23T12:24:59.419013+00:00",
-        "source_hash": "6839cfe12805b362af92f7b18876d4c857cee34e55aa1906356549435ea607a9",
+        "retrieved_at": "2026-09-23T12:31:34.862281+00:00",
+        "source_hash": "53086c4736b4894c833d1d2a3556441a37528fc58c663f2fe11490baab99fc95",
         "model": "ecmwf_ifs",
         "initialization_time": null,
         "wind_height_m": 100,
@@ -814,10 +814,10 @@
         "longitude": 78.538828
       },
       "current": {
-        "valid_time": "2026-09-23T12:15:00+00:00",
-        "wind_speed_10m": 4.31,
-        "wind_speed_100m": 6.53,
-        "temperature_2m": 24.5
+        "valid_time": "2026-09-23T12:30:00+00:00",
+        "wind_speed_10m": 4.17,
+        "wind_speed_100m": 6.86,
+        "temperature_2m": 23.9
       },
       "provenance": {
         "source": "Open-Meteo Forecast API",
@@ -829,8 +829,8 @@
           "latitude": 43.620384,
           "longitude": 78.47891
         },
-        "retrieved_at": "2026-09-23T12:24:59.804950+00:00",
-        "source_hash": "6839cfe12805b362af92f7b18876d4c857cee34e55aa1906356549435ea607a9",
+        "retrieved_at": "2026-09-23T12:31:35.244441+00:00",
+        "source_hash": "53086c4736b4894c833d1d2a3556441a37528fc58c663f2fe11490baab99fc95",
         "model": "ecmwf_ifs",
         "initialization_time": null,
         "wind_height_m": 100,
@@ -1970,8 +1970,8 @@
     "normalized_mean_proxy": 0.1357651068328977,
     "energy_24h_mwh": 14.18578445527834,
     "energy_horizon_mwh": 32.58362563989545,
-    "power_unit": "MW",
-    "energy_unit": "MWh",
+    "power_unit": "MW_estimate",
+    "energy_unit": "MWh_estimate",
     "energy_interval_hours": 1
   },
   "warnings": [
@@ -1991,14 +1991,14 @@
     "Model training data is 234 days old; current performance has not been validated."
   ],
   "audit": {
-    "input_hash": "4b183877cd0382d87c81908cbffe92b1418ed3cfad45b2301e8f34e6723417b8",
-    "model_hash": "8ac1a9a3bfcb4d6d3a4a0c215f374c9cdc4efabc5d16c88708b318e10137e5c4",
+    "input_hash": "229ad4367fc64834f999c8042d3c0bb5f6c3dad415790e96bb21df7d17524903",
+    "model_hash": "9fe3dde44e4851de3117be422996563870bdd31ff4087f2eae777d979102b769",
     "configuration_hash": "8c00f63ecc2c82580235a317bc1e4a571dc16f4c42777c1b521db4dc1254414e",
     "pipeline_version": "live-v2-assumption-labeled",
-    "code_hash": "1cc276266782f8e242742ab2db6174827e8a336d406aade55260422c66c26bae",
+    "code_hash": "2770e32b50c44abde9a8d58be1bf849b2b49fe2f3ab3c31add3efc295f4ee43b",
     "weather_source_hashes": {
-      "1": "6839cfe12805b362af92f7b18876d4c857cee34e55aa1906356549435ea607a9",
-      "2": "6839cfe12805b362af92f7b18876d4c857cee34e55aa1906356549435ea607a9"
+      "1": "53086c4736b4894c833d1d2a3556441a37528fc58c663f2fe11490baab99fc95",
+      "2": "53086c4736b4894c833d1d2a3556441a37528fc58c663f2fe11490baab99fc95"
     }
   }
 }

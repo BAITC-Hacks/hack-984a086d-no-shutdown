@@ -1,7 +1,7 @@
 """Current-weather forecasting using the existing trained conditional model.
 
-Current retrieval is separate from historical replay. Unverified capacity and
-exploratory power-curve thresholds never silently alter units or predictions.
+Live and historical replay are separate; assumed unit conversion and the
+explicit power-curve scenario remain visible in each result.
 """
 from __future__ import annotations
 
@@ -54,7 +54,22 @@ def _pipeline_code_hash():
         path = Path(__file__).with_name(name)
         digest.update(name.encode())
         digest.update(path.read_bytes())
+    research_physics = Path(__file__).resolve().parents[1] / 'src' / 'physics.py'
+    if research_physics.is_file():
+        digest.update(b'src/physics.py')
+        digest.update(research_physics.read_bytes())
     return digest.hexdigest()
+
+
+def _apply_physics_scenario(frame, pred_col, enabled, cut_in, cut_out):
+    if enabled and cut_in == 2.5 and cut_out == 25.0:
+        try:
+            from src.physics import apply_physics_sanity_check
+            return apply_physics_sanity_check(frame, pred_col=pred_col, wind_col='wind_speed')
+        except ImportError:
+            pass
+    return validate_physics_predictions(frame, pred_col=pred_col, enabled=enabled,
+                                        cut_in=cut_in, cut_out=cut_out)
 
 
 def _number(value,label,low,high):
@@ -261,8 +276,8 @@ class LiveForecastAgent:
                         pred=pred.reset_index(drop=True);pred['wind_speed']=frame.wind_speed.to_numpy()
                         raw=pred[['power','lower','upper']].copy();counts={}
                         for col in ('power','lower','upper'):
-                            pred=validate_physics_predictions(pred,pred_col=col,enabled=scenario_enabled,
-                                cut_in=scenario.get('cut_in_speed',2.5),cut_out=scenario.get('cut_out_speed',25.0))
+                            pred=_apply_physics_scenario(pred,col,scenario_enabled,
+                                scenario.get('cut_in_speed',2.5),scenario.get('cut_out_speed',25.0))
                             counts[col]=int((raw[col]!=pred[col]).sum())
                         ranges=meta['turbines'][str(tid)].get('training_weather_ranges',{})
                         outside={key:int((~frame[key].between(*bounds)).sum()) for key,bounds in ranges.items() if key in frame and isinstance(bounds,list) and len(bounds)==2}
@@ -297,8 +312,11 @@ class LiveForecastAgent:
                             'source':config.get('power_normalization_evidence') if conversion else None},
                         'physics_scenario_enabled':scenario_enabled,'current_is_model_estimate':True,'initialization_time':None,'availability_basis':'actual_retrieval',
                         'turbines':turbines,'farm':{'points':farm,'peak_power_mw':max(p['power_mw'] for p in farm) if conversion else None,'total_energy_horizon_mwh':sum(p['energy_mwh'] for p in farm) if conversion else None},
-                        'summary':{'normalized_mean_proxy':mean_proxy,'energy_24h_mwh':sum(p['energy_mwh'] for p in farm[:24]) if conversion else None,
-                            'energy_horizon_mwh':sum(p['energy_mwh'] for p in farm) if conversion else None,'power_unit':'MW' if conversion else 'normalized','energy_unit':'MWh' if conversion else None,'energy_interval_hours':1},
+                         'summary':{'normalized_mean_proxy':mean_proxy,'energy_24h_mwh':sum(p['energy_mwh'] for p in farm[:24]) if conversion else None,
+                             'energy_horizon_mwh':sum(p['energy_mwh'] for p in farm) if conversion else None,
+                             'power_unit':('MW_estimate' if conversion_assumed else 'MW') if conversion else 'normalized',
+                             'energy_unit':(('MWh_estimate' if conversion_assumed else 'MWh') if conversion else None),
+                             'energy_interval_hours':1},
                          'warnings':warnings,'limitations':warnings,'audit':{'input_hash':input_hash,'model_hash':model_hash,'configuration_hash':config_hash,'pipeline_version':PIPELINE_VERSION,'code_hash':code_hash,'weather_source_hashes':{str(t):provenances[t]['source_hash'] for t in (1,2)}}}
                 finished=_timestamp(self.now(),'clock')
                 if origin<_ceil_hour(finished):

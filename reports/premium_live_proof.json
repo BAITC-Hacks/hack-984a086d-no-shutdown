@@ -1,0 +1,69 @@
+{
+  "passed": true,
+  "issued_at": "2026-09-23T12:31:35.385645+00:00",
+  "forecast_start": "2026-09-23T13:00:00+00:00",
+  "forecast_rows": 96,
+  "model_hash": "9fe3dde44e4851de3117be422996563870bdd31ff4087f2eae777d979102b769",
+  "model_age_days": 234,
+  "capacity": {
+    "verified": true,
+    "conversion_enabled": true,
+    "conversion_assumed": true,
+    "conversion_verified": false,
+    "configured_unverified_mw": null,
+    "per_turbine_mw": 2.5,
+    "total_mw": 5.0,
+    "source": "User confirmed: 2.5 MW per turbine"
+  },
+  "energy_conversion": {
+    "enabled": true,
+    "basis": "assumed_rated_capacity_fraction",
+    "assumed": true,
+    "verified": false,
+    "source": "Conversion estimate assumes normalized power is a fraction of rated capacity; mapping is unverified against dataset documentation"
+  },
+  "physics_scenario_enabled": true,
+  "summary_estimates": {
+    "normalized_mean_proxy": 0.1357651068328977,
+    "energy_24h_mwh": 14.18578445527834,
+    "energy_horizon_mwh": 32.58362563989545,
+    "power_unit": "MW_estimate",
+    "energy_unit": "MWh_estimate",
+    "energy_interval_hours": 1
+  },
+  "turbines": [
+    {
+      "turbine_id": 1,
+      "energy_24h_mwh_estimate": 7.268406629920493,
+      "energy_horizon_mwh_estimate": 16.776996544807808,
+      "first_hour_normalized_power": 0.4592244520313045,
+      "physics_correction_counts": {
+        "power": 7,
+        "lower": 0,
+        "upper": 7
+      },
+      "weather_source_hash": "53086c4736b4894c833d1d2a3556441a37528fc58c663f2fe11490baab99fc95"
+    },
+    {
+      "turbine_id": 2,
+      "energy_24h_mwh_estimate": 6.917377825357845,
+      "energy_horizon_mwh_estimate": 15.806629095087642,
+      "first_hour_normalized_power": 0.4410578678703908,
+      "physics_correction_counts": {
+        "power": 7,
+        "lower": 0,
+        "upper": 7
+      },
+      "weather_source_hash": "53086c4736b4894c833d1d2a3556441a37528fc58c663f2fe11490baab99fc95"
+    }
+  ],
+  "checks": [
+    "cache integrity and weather source hashes",
+    "weather values match original API response",
+    "future consecutive UTC hours",
+    "2.5 MW nameplate input and explicitly assumed rated-fraction conversion",
+    "physics scenario cut-in/out and interval bounds",
+    "farm MW/MWh estimates equal both turbine sums",
+    "CSV normalized forecasts match JSON"
+  ]
+}

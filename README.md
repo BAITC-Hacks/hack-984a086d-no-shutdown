@@ -6,7 +6,7 @@
 
 ## Быстрый запуск
 
-На компьютере жюри нужны Python 3.12 или новее (добавленный в PATH) и интернет для первой установки зависимостей и свежего прогноза. Проверьте в PowerShell командой `python --version`. Node.js не требуется.
+На компьютере жюри нужен Python 3.12, добавленный в PATH; проверьте его в PowerShell командой `python --version`. Python 3.12 — проверенная версия, более новые версии пока не проверялись. Node.js не требуется.
 
 **Windows (PowerShell):** откройте эту папку в VS Code и выполните:
 
@@ -20,15 +20,15 @@
 bash start.sh
 ```
 
-Скрипт создаёт `.venv` в папке проекта, устанавливает закреплённые зависимости из `requirements.lock.txt` и запускает локальный сервер. Откройте <http://127.0.0.1:8000>. Если порт занят, в PowerShell выполните `.\start.ps1 -Port 8001`; откройте <http://127.0.0.1:8001>. Остановка — Ctrl+C.
+Скрипт создаёт `.venv` в папке проекта, устанавливает закреплённые зависимости из `requirements.lock.txt` и запускает локальный сервер. Откройте <http://127.0.0.1:8000>. Если PowerShell блокирует скрипт, выполните `powershell -ExecutionPolicy Bypass -File .\start.ps1` (только для этого процесса). Если порт занят, используйте `.\start.ps1 -Port 8001`. Остановка — Ctrl+C.
 
-Модели уже входят в `artifacts/`; первый запуск не требует повторного обучения. Если предыдущая версия сервера запущена, остановите её перед запуском этой папки.
+Модели уже входят в `artifacts/`; первый запуск не требует повторного обучения. Если предыдущая версия сервера запущена, остановите её перед запуском этой папки. Скрипт запуска не активирует `.venv` в новом терминале; ниже команды обучения и проверок вызывают Python из `.venv` явно.
 
 Опциональный режим FastAPI с интерактивной схемой API доступен при установленной web-группе. Для обычного запуска на localhost он не требуется:
 
 ```powershell
-python -m pip install -e ".[web]"
-python -m windagent serve --fastapi
+& .\.venv\Scripts\python.exe -m pip install -e ".[web]"
+& .\.venv\Scripts\python.exe -m windagent serve --fastapi
 ```
 
 Документация API будет по адресу <http://127.0.0.1:8000/docs>. По умолчанию приложение использует стандартный HTTP-сервер Python.
@@ -38,7 +38,7 @@ python -m windagent serve --fastapi
 ## Что показать на демонстрации
 
 1. На панели переключите T1/T2, исторический режим и горизонт 24/48 часов. Наведите курсор на график, выберите точку и скачайте CSV.
-2. Откройте режим **«Сейчас · live»**. Он запрашивает погоду для следующего полного часа и использует ту же обученную модель. Успешный свежий запрос требует доступного Open-Meteo API и интернета; при ошибке приложение показывает ошибку, а не придумывает погоду.
+2. Откройте режим **«Сейчас · live»**. Он запрашивает погоду для следующего полного часа и использует ту же модель. В этой сборке выполнен свежий live-запрос на 48 ч для T1 и T2; проверка с 96 прогнозными строками и погодные снимки сохранены в [`reports/premium_live_proof.json`](reports/premium_live_proof.json) и `reports/premium_live_weather_turbine_1.json` / `reports/premium_live_weather_turbine_2.json`.
 3. Спросите локального аналитика: «Сравни T1 и T2», «Найди лучшие три часа» или «Покажи резкие перепады». Ответ вычисляется из прогноза текущего запуска.
 4. Покажите `reports/february_forecasts.csv` и `reports/february_replay.json`: это сохранённая реконструкция по 28 историческим срезам и 2 688 точкам, а не февральская оценка по измеренным фактам.
 
@@ -67,7 +67,7 @@ ECMWF / Open-Meteo ──> проверка доступности/кэша ─�
 
 Модели обучены на поставленных CSV с телеметрией T1/T2. Их контрольные суммы и качество данных приведены в `reports/dataset_profile.json`; конфигурация отбора и артефактные хеши — в `artifacts/metadata.json`. Используются только часы с шестью из шести десятиминутных измерений. Пропуски не превращаются в нулевую выработку. Данные доходят до 31 января 2026; фактических февральских измерений в наборе нет.
 
-Кандидаты сравнивались на трёх последовательных временных окнах, январь оставался финальным holdout, а после оценки выбранная модель была переобучена на данных до 1 февраля. На январском holdout (744 часа на турбину), при подаче **фактического ветра и температуры**, получена MAE 0.02187 для T1 и 0.02404 для T2 в единицах нормализованной мощности. Это оценка условной зависимости мощности от известной погоды, а не точность прогноза на 24/48 часов. У T2 RMSE немного выше базового алгоритма; отчёт не заявляет улучшение каждой метрики. См. [`reports/training_report.md`](reports/training_report.md) и [`reports/model_revision_audit.json`](reports/model_revision_audit.json).
+Кандидаты сравнивались на трёх последовательных временных окнах, январь оставался финальным holdout, а после оценки выбранная модель была переобучена на данных до 1 февраля. На январском holdout (744 часа на турбину), при подаче **фактического ветра и температуры**, получена MAE 0.0216948 для T1 и 0.0240447 для T2 в единицах нормализованной мощности. Это оценка условной зависимости мощности от известной погоды, а не точность прогноза на 24/48 часов. У T2 RMSE немного выше базового алгоритма; отчёт не заявляет улучшение каждой метрики. См. [`reports/training_report.md`](reports/training_report.md) и [`reports/supervisor_verification.json`](reports/supervisor_verification.json).
 
 Архивная погодная реконструкция покрывает 28 февральских срезов. Провайдер помечает исторические ECMWF данные как hindcast; предполагаемая задержка публикации 12 часов не подтверждена первичным журналом доступности. Поэтому для сохранённых исторических расчётов `as_of_verified=false`: их нельзя выдавать за доказанный оперативный backtest. Свежий live-режим использует внешний API в момент запуска; отчёты интеграционных тестов с контролируемой фикстурой сами по себе не доказывают успешный сетевой вызов.
 
@@ -80,28 +80,28 @@ ECMWF / Open-Meteo ──> проверка доступности/кэша ─�
 Для повторного обучения с тем же срезом и временным протоколом:
 
 ```powershell
-python -m windagent train --cutoff 2026-02-01T00:00:00+05:00 --timezone Asia/Almaty --timestamp-semantics start --min-samples 6 --validation-months 6 --folds 3
+& .\.venv\Scripts\python.exe -m windagent train --cutoff 2026-02-01T00:00:00+05:00 --timezone Asia/Almaty --timestamp-semantics start --min-samples 6 --validation-months 6 --folds 3
 ```
 
 Чтобы создать свежий погодный прогноз на 48 часов и сохранить JSON/CSV:
 
 ```powershell
-python -m windagent live --horizon 48 --refresh --output reports/live_forecast.json --csv reports/live_forecast.csv
+& .\.venv\Scripts\python.exe -m windagent live --horizon 48 --refresh --output reports/live_forecast.json --csv reports/live_forecast.csv
 ```
 
 Для запуска автоматизированных проверок из корня проекта (без внешней сети):
 
 ```powershell
-python -m unittest discover -s tests -v
-python scripts/verify_weather.py
-python scripts/verify_service.py --real
-python scripts/verify_delivery.py
-python scripts/verify_live.py
-python scripts/verify_live_http.py
-python scripts/verify_chat_tools.py
-python scripts/verify_model_revision.py
+& .\.venv\Scripts\python.exe -m unittest discover -s tests -v
+& .\.venv\Scripts\python.exe scripts/verify_weather.py
+& .\.venv\Scripts\python.exe scripts/verify_service.py --real
+& .\.venv\Scripts\python.exe scripts/verify_delivery.py
+& .\.venv\Scripts\python.exe scripts/verify_live.py
+& .\.venv\Scripts\python.exe scripts/verify_live_http.py
+& .\.venv\Scripts\python.exe scripts/verify_chat_tools.py
+& .\.venv\Scripts\python.exe scripts/verify_model_revision.py
 ```
 
-Проверки охватывают протокол временной валидации, обработку данных, API-маршруты и сервис с реальными моделями, кэш/происхождение погоды и правила локального чата. Перед публичной демонстрацией запускайте live-команду отдельно: offline-тесты используют контролируемые входы и не заменяют фактический сетевой запрос. Результаты сохранены в `reports/`; там явно отмечены проверки, которые не выполнялись в изолированной среде.
+Финальная проверка: **88 passed, 21 subtests passed**; было одно предупреждение Starlette. В браузере проверены live T1/48 ч и T2/24 ч, архивный режим с предупреждением, ответ чата о лучшем трёхчасовом окне и четыре изображения; при 1280 px переполнения не было, ошибок и предупреждений консоли — 0. Свежий live-запрос для обеих турбин подтверждён в `reports/premium_live_proof.json`. Preview через браузер не проверялся: политика среды заблокировала локальный `file://` просмотр. Архивный hindcast всё ещё не доказывает историческую доступность; февральских фактов для оценки точности нет.
 
 Полезные материалы: [инструкция для первого запуска](START_HERE.md), [карта критериев и сценарий защиты](docs/CRITERIA.md), [аудит премиальной сборки](docs/PREMIUM_REVIEW.md), [модель и временная валидация](docs/TUNING.md), [погода и ограничения архива](docs/WEATHER.md), [live-режим](docs/LIVE.md).

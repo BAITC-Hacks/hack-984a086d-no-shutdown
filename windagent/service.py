@@ -149,9 +149,14 @@ def dashboard_forecast(turbine_id: str, as_of_date: str | None, horizon_hours=48
 def live_dashboard(turbine_id: str, result: dict) -> dict:
     """Project a single live run into the same UI contract as historical forecasts."""
     selected = next(item for item in result["turbines"] if str(item["turbine_id"]) == turbine_id[-1])
+    energy_conversion = result.get("energy_conversion", {})
+    conversion_enabled = bool(energy_conversion.get("enabled", False))
     forecast = [{"timestamp": row["timestamp"], "predicted_power": row["normalized_power"],
                  "lower": row["lower_normalized"], "upper": row["upper_normalized"],
-                 "wind_speed": row["wind_speed"], "temperature": row["temperature"]}
+                 "wind_speed": row["wind_speed"], "temperature": row["temperature"],
+                 **({"power_mw": row.get("power_mw"), "lower_mw": row.get("lower_mw"),
+                     "upper_mw": row.get("upper_mw"), "energy_mwh": row.get("energy_mwh")}
+                    if conversion_enabled else {})}
                 for row in selected["points"]]
     zone = "Asia/Almaty"
     origin = result["forecast_start"]
@@ -183,7 +188,8 @@ def live_dashboard(turbine_id: str, result: dict) -> dict:
     if "version" not in model:
         model = {**model, "version": model.get("model_version", model.get("name", "unknown"))}
     selected_farm = [{"timestamp": point["timestamp"],
-                      "power_mw": point.get("power_mw"), "energy_mwh": point.get("energy_mwh"),
+                      **({"power_mw": point.get("power_mw"), "energy_mwh": point.get("energy_mwh")}
+                         if conversion_enabled else {}),
                       "normalized_power_mean_proxy": point.get("normalized_power_mean_proxy")}
                      for point in result.get("farm", {}).get("points", [])]
     return {"turbine_id": turbine_id, "as_of_date": day, "generated_at": result.get("checked_at", result["issued_at"]),
@@ -193,7 +199,7 @@ def live_dashboard(turbine_id: str, result: dict) -> dict:
             "origin": origin, "date_timezone": zone, "model": model, "provenance": provenance,
             "forecast_id": result["id"], "audit_id": result["id"], "as_of_verified": False,
             "mode": "live", "current": selected.get("current"), "fleet_summary": fleet_summary(series),
-            "capacity": result.get("capacity"), "energy_conversion": result.get("energy_conversion"),
+            "capacity": result.get("capacity"), "energy_conversion": energy_conversion,
             "farm": {**result.get("farm", {}), "points": selected_farm}}
 
 

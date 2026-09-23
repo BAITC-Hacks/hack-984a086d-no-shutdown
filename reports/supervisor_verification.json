@@ -1,5 +1,5 @@
 {
-  "verified_at": "2026-09-23T12:10:02.421291+00:00",
+  "verified_at": "2026-09-23T12:33:09.513063+00:00",
   "model_version": "conditional-power-v2",
   "source_hashes_match": true,
   "artifact_hashes_match": true,
@@ -9,15 +9,15 @@
   "january_rows": 672,
   "january_metrics_recomputed": {
     "1:0-23": {
-      "mae": 0.13923230829225858,
-      "rmse": 0.2326883410535725,
-      "bias": -0.10385065220465134,
+      "mae": 0.13767232026512982,
+      "rmse": 0.23129603761941747,
+      "bias": -0.10175435811318916,
       "persistence_mae": 0.28495039682539675
     },
     "1:24-47": {
-      "mae": 0.1332904406709292,
-      "rmse": 0.22030567145354923,
-      "bias": -0.09006037387711836,
+      "mae": 0.13244681122054835,
+      "rmse": 0.2190768928754491,
+      "bias": -0.0881099543484993,
       "persistence_mae": 0.2291865079365079
     },
     "2:0-23": {
@@ -36,8 +36,8 @@
   "conditional_holdout_metrics_recomputed": {
     "1": {
       "n": 744,
-      "mae": 0.021873202152126126,
-      "rmse": 0.048216534495831395,
+      "mae": 0.021694782345275873,
+      "rmse": 0.04805273961208144,
       "selected_candidate": "hgb_mae_smooth",
       "note": "Observed-weather conditional fit; not operational day-ahead accuracy."
     },
@@ -57,12 +57,12 @@
   "weather_provenance": "unverified_hindcast; 12-hour availability is assumed, not documented publication",
   "february_accuracy": "unavailable: supplied actual observations stop on January 31",
   "live_http_smoke": {
-    "status": "not_run",
-    "reason": "Default offline audit; --live-http is explicit opt-in. Current sandbox denies socket bind."
+    "status": "not_run_in_this_script",
+    "reason": "This saved-output audit does not launch the local server; pass --live-http to request a TCP smoke test."
   },
   "fastapi_pytest_suite": {
-    "status": "not_run",
-    "reason": "Optional FastAPI/pytest dependencies unavailable in this environment"
+    "status": "not_run_in_this_script",
+    "reason": "This saved-output audit does not invoke pytest or start the optional FastAPI server."
   },
   "independent_service_checks": {
     "tests_run": 10,

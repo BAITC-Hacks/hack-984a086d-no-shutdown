@@ -187,8 +187,8 @@ def verify(*, live_http: bool = False) -> dict:
                   conditional_holdout_rows=len(conditional),as_of_verified=False,
                   weather_provenance='unverified_hindcast; 12-hour availability is assumed, not documented publication',
                   february_accuracy='unavailable: supplied actual observations stop on January 31',
-                  live_http_smoke=live_http_smoke() if live_http else {'status':'not_run','reason':'Default offline audit; --live-http is explicit opt-in. Current sandbox denies socket bind.'},
-                  fastapi_pytest_suite={'status':'not_run','reason':'Optional FastAPI/pytest dependencies unavailable in this environment'},
+                  live_http_smoke=live_http_smoke() if live_http else {'status':'not_run_in_this_script','reason':'This saved-output audit does not launch the local server; pass --live-http to request a TCP smoke test.'},
+                  fastapi_pytest_suite={'status':'not_run_in_this_script','reason':'This saved-output audit does not invoke pytest or start the optional FastAPI server.'},
                   independent_service_checks=read_json('reports/service_verification.json'),
                   independent_weather_checks=read_json('reports/weather_provenance_audit.json'),
                   status='passed_saved_output_audit')

@@ -1,5 +1,5 @@
 {
-  "verified_at": "2026-09-23T11:50:52.358650+00:00",
+  "verified_at": "2026-09-23T12:35:09.444873+00:00",
   "model_version": "conditional-power-v2",
   "turbines": {
     "1": {
@@ -11,17 +11,17 @@
       "metrics": {
         "hgb_mae_smooth": {
           "n": 744,
-          "mae": 0.021873202152126126,
-          "rmse": 0.048216534495831395,
-          "bias": 0.004807834962306031,
-          "r2": 0.9795659897711219
+          "mae": 0.021694782345275873,
+          "rmse": 0.04805273961208144,
+          "bias": 0.004524836418257049,
+          "r2": 0.9797045854372579
         },
         "hist_gradient_boosting": {
           "n": 744,
-          "mae": 0.02390091760382301,
-          "rmse": 0.04862628833029059,
-          "bias": 0.0020984095123869773,
-          "r2": 0.979217209358399
+          "mae": 0.02361739945717093,
+          "rmse": 0.048193521742779084,
+          "bias": 0.002025791916447989,
+          "r2": 0.9795854905758811
         },
         "wind_bin_curve": {
           "n": 744,
@@ -31,7 +31,7 @@
           "r2": 0.9702753488486666
         }
       },
-      "relative_mae_improvement_against_original_algorithm": 0.08483839345869071,
+      "relative_mae_improvement_against_original_algorithm": 0.08140680837370073,
       "raw_threshold_diagnostic": {
         "rows_below_2_5_ms": 27165,
         "nonzero_normalized_targets_below_2_5_ms": 26671,
@@ -41,14 +41,12 @@
       },
       "posthoc_fixed_archive_physics_rule_on_holdout": {
         "n": 744,
-        "mae": 0.02379138963765286,
-        "rmse": 0.04843182887670033,
-        "bias": 0.002868603981641507,
-        "r2": 0.9793831002511488
+        "mae": 0.023603601671432297,
+        "rmse": 0.048267946187478074,
+        "bias": 0.002591893226159296,
+        "r2": 0.9795223903243465
       },
-      "physics_diagnostic_note": "Post-hoc audit of an inherited fixed rule, not another tuning or selection step; normalized zero is not proven equivalent to stopped generation.",
-      "archive_raw_csv_identical": true,
-      "archive_artifact_sha256": "f9a25c5c30dbc11d6a8ac3b8b734049a0dc709bd7e5f7bcfef2a72b1940d0d74"
+      "physics_diagnostic_note": "Post-hoc audit of an inherited fixed rule, not another tuning or selection step; normalized zero is not proven equivalent to stopped generation."
     },
     "2": {
       "raw_sha256": "820578cd18bb557cd30c2e102f3ae5a386dfc6c489a5a15743339c2b017305e5",
@@ -66,20 +64,20 @@
         },
         "hist_gradient_boosting": {
           "n": 744,
-          "mae": 0.025362563706330932,
-          "rmse": 0.06355023245606561,
-          "bias": 0.0019218485791145028,
-          "r2": 0.9645678192900776
+          "mae": 0.025009329269618786,
+          "rmse": 0.06264197579111257,
+          "bias": 0.0017506922606183631,
+          "r2": 0.9655733717411837
         },
         "wind_bin_curve": {
           "n": 744,
-          "mae": 0.03935396160226773,
+          "mae": 0.03935396160226772,
           "rmse": 0.07209355807741438,
           "bias": 0.01770471009277489,
           "r2": 0.9544008743342309
         }
       },
-      "relative_mae_improvement_against_original_algorithm": 0.05196174644649465,
+      "relative_mae_improvement_against_original_algorithm": 0.03857155293649317,
       "raw_threshold_diagnostic": {
         "rows_below_2_5_ms": 28708,
         "nonzero_normalized_targets_below_2_5_ms": 26920,
@@ -94,9 +92,7 @@
         "bias": 0.0037569503984499087,
         "r2": 0.9637562496850501
       },
-      "physics_diagnostic_note": "Post-hoc audit of an inherited fixed rule, not another tuning or selection step; normalized zero is not proven equivalent to stopped generation.",
-      "archive_raw_csv_identical": true,
-      "archive_artifact_sha256": "11dc173889699321427a6c54414e7b42031f8316e91b7a3f82c6ae1f3c58fc90"
+      "physics_diagnostic_note": "Post-hoc audit of an inherited fixed rule, not another tuning or selection step; normalized zero is not proven equivalent to stopped generation."
     }
   },
   "method": "Recompute archived pre-January holdout predictions; never score a production artifact fitted on January against January.",
@@ -105,38 +101,5 @@
     "No February actual power is present.",
     "Timezone, interval convention and normalization formula remain unconfirmed."
   ],
-  "archive_comparison": {
-    "archive_model_version": "conditional-power-v1",
-    "archive_hgb_parameters": {
-      "max_iter": 160,
-      "learning_rate": 0.06,
-      "max_leaf_nodes": 23,
-      "min_samples_leaf": 35,
-      "l2_regularization": 1.0,
-      "random_state": 17
-    },
-    "hgb_reference_matches_archive_algorithm": true,
-    "archive_training_uses_physics_feature": false,
-    "archive_physics_constants": {
-      "CUT_IN_SPEED": 2.5,
-      "RATED_SPEED": 10.5,
-      "CUT_OUT_SPEED": 25.0
-    },
-    "archive_capacity_configuration": {
-      "capacity_mw": 2.5,
-      "capacity_source": "user supplied",
-      "turbines": {
-        "1": {
-          "latitude": 43.64515,
-          "longitude": 78.535604
-        },
-        "2": {
-          "latitude": 43.643198,
-          "longitude": 78.538828
-        }
-      }
-    },
-    "capacity_and_physics_interpretation": "Inherited configuration and code assertions; not independent confirmation of nameplate capacity, normalization or cut-in/cut-out thresholds."
-  },
   "status": "passed_model_revision_audit"
 }

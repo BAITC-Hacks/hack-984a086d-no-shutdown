@@ -48,12 +48,14 @@ window.fetch = async (url, options={}) => {
   return new Response(JSON.stringify(value),{status:code,headers:{'Content-Type':'application/json'}});
 };
 '''.replace('__DATA__',payload)
-    app=(ROOT/'app.js').read_text().replace("if (location.protocol === 'file:')",'if (false)').replace('API подключён · модель готова','Сохранённые прогнозы · офлайн').replace('Локальный режим: анализ данных по правилам, без LLM.','Офлайн-просмотр: сохранённые данные и ответы по правилам, без LLM.')
-    html=(ROOT/'index.html').read_text().replace('<link rel="stylesheet" href="styles.css">','<style>'+(ROOT/'styles.css').read_text()+'</style>').replace('<script defer src="app.js"></script>','')
+    app=(ROOT/'app.js').read_text(encoding='utf-8').replace("if (location.protocol === 'file:')",'if (false)').replace("mode: 'live', turbine:","mode: 'backtest', turbine:").replace('API подключён · модель готова','Сохранённые прогнозы · офлайн').replace('Актуальная погода · прогноз от текущего момента','Офлайн-просмотр · показан сохранённый архивный прогноз февраля 2026 года').replace('Офлайн-просмотр: сохранённые данные и ответы по правилам, без LLM.','Офлайн-просмотр: сохранённые данные и ответы по правилам, без LLM.')
+    html=(ROOT/'index.html').read_text(encoding='utf-8').replace('<link rel="stylesheet" href="styles.css">','<style>'+(ROOT/'styles.css').read_text(encoding='utf-8')+'</style>').replace('<script defer src="app.js"></script>','')
     for photo in ('wind-night.jpg', 'energy-grid.jpg', 'operator.jpg'):
         encoded = base64.b64encode((ROOT/'assets'/photo).read_bytes()).decode()
         html = html.replace('assets/'+photo, 'data:image/jpeg;base64,'+encoded)
-    html=html.replace('<body>','<body><div style="padding:12px 24px;background:#102b4b;color:#c0e8ff;font:13px/1.5 system-ui;text-align:center;position:relative;z-index:5">ОФЛАЙН-ПРОСМОТР · реальные сохранённые прогнозы обученной модели. Пересчёт и подключение LLM — в основном сайте после запуска Python-сервера.</div>')
+    curve = base64.b64encode((ROOT/'assets'/'power_curves_turbines.png').read_bytes()).decode()
+    html = html.replace('/assets/power_curves_turbines.png', 'data:image/png;base64,'+curve)
+    html=html.replace('<body>','<body><div style="padding:12px 24px;background:#102b4b;color:#c0e8ff;font:13px/1.5 system-ui;text-align:center;position:relative;z-index:5">ОФЛАЙН-ПРОСМОТР · сохранённые архивные прогнозы февраля 2026 года. Live-погода, пересчёт и чат с LLM доступны после запуска Python-сервера.</div>')
     html=html.replace('</body>','<script>'+adapter+'</script><script>'+app+'</script></body>')
     (ROOT/'preview.html').write_text(html,encoding='utf-8')
     print(f'Exported {len(snapshots)} real forecast views to preview.html')
