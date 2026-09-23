@@ -47,7 +47,6 @@ python3 -m http.server 8000 --bind 127.0.0.1
 дату среза, поэтому прогноз может продолжаться в марте.
 
 ## Подключение бэкенда позже
-
 Основные поля ответа соответствуют обсуждённому контракту:
 `turbine_id`, `as_of_date`, `generated_at`, `horizon_hours`, `forecast`, `warnings`.
 В каждой точке: `timestamp`, `predicted_power`, `wind_speed`, `temperature`.
