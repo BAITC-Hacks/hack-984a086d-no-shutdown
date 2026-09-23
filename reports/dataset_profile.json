@@ -1,0 +1,75 @@
+{
+  "timezone_assumption": "Asia/Almaty",
+  "hourly_interval_semantics": "UTC interval-start timestamp; mean available at interval end",
+  "minimum_samples_per_hour": 4,
+  "turbines": {
+    "1": {
+      "raw_rows": 142360,
+      "invalid_timestamp_rows": 0,
+      "invalid_or_dst_timestamp_rows": 6,
+      "off_grid_timestamp_rows": 0,
+      "invalid_numeric_or_range_rows": 0,
+      "duplicate_timestamp_rows": 0,
+      "valid_unique_ten_minute_rows": 142354,
+      "retained_hourly_rows": 23727,
+      "dropped_undercovered_hours": 35,
+      "raw_sha256": "c4c341582fb2dd348b7187f0128cff265fe055f469413871ebb5db50eef58b5b",
+      "first_valid_local_timestamp": "2023-03-11 00:00:00+06:00",
+      "last_valid_local_timestamp": "2026-01-31 23:50:00+05:00",
+      "first_hour_utc": "2023-03-10T18:00:00Z",
+      "last_hour_utc": "2026-01-31T18:00:00Z",
+      "observed_hour_span": 25393,
+      "missing_hours_inside_span": 1666,
+      "first_local_timestamp": "2023-03-11 00:00:00+06:00",
+      "last_local_timestamp": "2026-01-31 23:50:00+05:00",
+      "largest_gap_hours": 1000,
+      "median_samples_per_hour": 6.0,
+      "wind_speed_range_m_s": [
+        0.0,
+        20.398333333333333
+      ],
+      "temperature_range_c": [
+        -18.426666666666666,
+        43.068333333333335
+      ],
+      "normalized_power_range": [
+        0.005,
+        0.9983333333333334
+      ]
+    },
+    "2": {
+      "raw_rows": 149499,
+      "invalid_timestamp_rows": 0,
+      "invalid_or_dst_timestamp_rows": 6,
+      "off_grid_timestamp_rows": 0,
+      "invalid_numeric_or_range_rows": 0,
+      "duplicate_timestamp_rows": 0,
+      "valid_unique_ten_minute_rows": 149493,
+      "retained_hourly_rows": 24918,
+      "dropped_undercovered_hours": 85,
+      "raw_sha256": "820578cd18bb557cd30c2e102f3ae5a386dfc6c489a5a15743339c2b017305e5",
+      "first_valid_local_timestamp": "2023-03-11 00:00:00+06:00",
+      "last_valid_local_timestamp": "2026-01-31 23:50:00+05:00",
+      "first_hour_utc": "2023-03-10T18:00:00Z",
+      "last_hour_utc": "2026-01-31T18:00:00Z",
+      "observed_hour_span": 25393,
+      "missing_hours_inside_span": 475,
+      "first_local_timestamp": "2023-03-11 00:00:00+06:00",
+      "last_local_timestamp": "2026-01-31 23:50:00+05:00",
+      "largest_gap_hours": 59,
+      "median_samples_per_hour": 6.0,
+      "wind_speed_range_m_s": [
+        0.22666666666666666,
+        19.406666666666666
+      ],
+      "temperature_range_c": [
+        -18.648333333333333,
+        43.22333333333333
+      ],
+      "normalized_power_range": [
+        0.0016666666666666668,
+        0.995
+      ]
+    }
+  }
+}

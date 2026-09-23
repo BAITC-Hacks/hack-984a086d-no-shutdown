@@ -1,0 +1,258 @@
+{
+  "model_version": "conditional-power-v1",
+  "model_available_at": "2025-12-31T19:00:00Z",
+  "model_available_at_local": "2026-01-01T00:00:00+05:00",
+  "timezone": "Asia/Almaty",
+  "feature_schema": [
+    "wind_speed",
+    "temperature",
+    "hour_sin",
+    "hour_cos",
+    "year_day_sin",
+    "year_day_cos"
+  ],
+  "input_files": [
+    "turbine_1.csv",
+    "turbine_2.csv"
+  ],
+  "library_versions": {
+    "pandas": "3.0.6",
+    "numpy": "2.5.3",
+    "scikit_learn": "1.9.1",
+    "joblib": "1.6.0"
+  },
+  "input_hashes": {
+    "1": "c4c341582fb2dd348b7187f0128cff265fe055f469413871ebb5db50eef58b5b",
+    "2": "820578cd18bb557cd30c2e102f3ae5a386dfc6c489a5a15743339c2b017305e5"
+  },
+  "turbines": {
+    "1": {
+      "artifact": "turbine_1.joblib",
+      "artifact_sha256": "655d6c78de1fb895fbb59c3873454783cf49973d7d18a4a2af276f872f480bab",
+      "selected_candidate": "hist_gradient_boosting",
+      "training_hours": 22983,
+      "training_first_hour_utc": "2023-03-10T18:00:00Z",
+      "training_last_hour_utc": "2025-12-31T18:00:00Z",
+      "chronological_split": {
+        "fit": {
+          "row_count": 14938,
+          "first_hour_utc": "2023-03-10T18:00:00Z",
+          "last_hour_utc": "2025-01-24T12:00:00Z"
+        },
+        "validation": {
+          "row_count": 3448,
+          "first_hour_utc": "2025-01-24T13:00:00Z",
+          "last_hour_utc": "2025-06-20T12:00:00Z"
+        },
+        "holdout": {
+          "row_count": 4597,
+          "first_hour_utc": "2025-06-20T13:00:00Z",
+          "last_hour_utc": "2025-12-31T18:00:00Z"
+        },
+        "selection_rule": "minimum validation MAE; holdout metrics are diagnostic only"
+      },
+      "candidate_validation_metrics": {
+        "hist_gradient_boosting": {
+          "n": 3448,
+          "mae": 0.031531563664879365,
+          "rmse": 0.09102718063790473,
+          "bias": 0.009209825509766364,
+          "r2": 0.9372572023273268
+        },
+        "wind_bin_curve": {
+          "n": 3448,
+          "mae": 0.036445864382245514,
+          "rmse": 0.09482128701752418,
+          "bias": 0.010062305880434858,
+          "r2": 0.9319178302663387
+        }
+      },
+      "selection_justification": "Selected hist_gradient_boosting: it had the lowest MAE on the chronological validation block; the later holdout was not used for selection.",
+      "validation": {
+        "n": 3448,
+        "mae": 0.031531563664879365,
+        "rmse": 0.09102718063790473,
+        "bias": 0.009209825509766364,
+        "r2": 0.9372572023273268
+      },
+      "holdout": {
+        "n": 4597,
+        "mae": 0.025171184940311973,
+        "rmse": 0.05397406502834232,
+        "bias": -0.005374361181549512,
+        "r2": 0.9750790509986653
+      },
+      "holdout_candidates": {
+        "hist_gradient_boosting": {
+          "n": 4597,
+          "mae": 0.025171184940311973,
+          "rmse": 0.05397406502834232,
+          "bias": -0.005374361181549512,
+          "r2": 0.9750790509986653
+        },
+        "wind_bin_curve": {
+          "n": 4597,
+          "mae": 0.022860044930005128,
+          "rmse": 0.03950775779376658,
+          "bias": -0.0029109602412478877,
+          "r2": 0.986647607635057
+        }
+      },
+      "conditional_interval": {
+        "quantile": 0.9,
+        "symmetric_radius": 0.05577841641665457,
+        "validation_empirical_coverage": 0.9002320185614849
+      }
+    },
+    "2": {
+      "artifact": "turbine_2.joblib",
+      "artifact_sha256": "1c88ca8a9ae0b2e48feb121017a586d0eba8672a09e129bbf68fa82809576234",
+      "selected_candidate": "hist_gradient_boosting",
+      "training_hours": 24174,
+      "training_first_hour_utc": "2023-03-10T18:00:00Z",
+      "training_last_hour_utc": "2025-12-31T18:00:00Z",
+      "chronological_split": {
+        "fit": {
+          "row_count": 15713,
+          "first_hour_utc": "2023-03-10T18:00:00Z",
+          "last_hour_utc": "2025-01-06T08:00:00Z"
+        },
+        "validation": {
+          "row_count": 3626,
+          "first_hour_utc": "2025-01-06T09:00:00Z",
+          "last_hour_utc": "2025-06-10T00:00:00Z"
+        },
+        "holdout": {
+          "row_count": 4835,
+          "first_hour_utc": "2025-06-10T01:00:00Z",
+          "last_hour_utc": "2025-12-31T18:00:00Z"
+        },
+        "selection_rule": "minimum validation MAE; holdout metrics are diagnostic only"
+      },
+      "candidate_validation_metrics": {
+        "hist_gradient_boosting": {
+          "n": 3626,
+          "mae": 0.025514109315197417,
+          "rmse": 0.06885733095891343,
+          "bias": 0.0030865030679973564,
+          "r2": 0.9653292913036732
+        },
+        "wind_bin_curve": {
+          "n": 3626,
+          "mae": 0.030900926455643657,
+          "rmse": 0.07117507454585309,
+          "bias": 0.010024449215214472,
+          "r2": 0.9629559713684962
+        }
+      },
+      "selection_justification": "Selected hist_gradient_boosting: it had the lowest MAE on the chronological validation block; the later holdout was not used for selection.",
+      "validation": {
+        "n": 3626,
+        "mae": 0.025514109315197417,
+        "rmse": 0.06885733095891343,
+        "bias": 0.0030865030679973564,
+        "r2": 0.9653292913036732
+      },
+      "holdout": {
+        "n": 4835,
+        "mae": 0.020817727466673114,
+        "rmse": 0.04890976058801419,
+        "bias": 0.004326412236954728,
+        "r2": 0.9792183086221764
+      },
+      "holdout_candidates": {
+        "hist_gradient_boosting": {
+          "n": 4835,
+          "mae": 0.020817727466673114,
+          "rmse": 0.04890976058801419,
+          "bias": 0.004326412236954728,
+          "r2": 0.9792183086221764
+        },
+        "wind_bin_curve": {
+          "n": 4835,
+          "mae": 0.022385203095493533,
+          "rmse": 0.0480127406279879,
+          "bias": 0.0017586500950655434,
+          "r2": 0.9799736034958129
+        }
+      },
+      "conditional_interval": {
+        "quantile": 0.9,
+        "symmetric_radius": 0.04872033636121598,
+        "validation_empirical_coverage": 0.900165471594043
+      }
+    }
+  },
+  "metrics": {
+    "1": {
+      "validation": {
+        "n": 3448,
+        "mae": 0.031531563664879365,
+        "rmse": 0.09102718063790473,
+        "bias": 0.009209825509766364,
+        "r2": 0.9372572023273268
+      },
+      "holdout": {
+        "n": 4597,
+        "mae": 0.025171184940311973,
+        "rmse": 0.05397406502834232,
+        "bias": -0.005374361181549512,
+        "r2": 0.9750790509986653
+      },
+      "holdout_candidates": {
+        "hist_gradient_boosting": {
+          "n": 4597,
+          "mae": 0.025171184940311973,
+          "rmse": 0.05397406502834232,
+          "bias": -0.005374361181549512,
+          "r2": 0.9750790509986653
+        },
+        "wind_bin_curve": {
+          "n": 4597,
+          "mae": 0.022860044930005128,
+          "rmse": 0.03950775779376658,
+          "bias": -0.0029109602412478877,
+          "r2": 0.986647607635057
+        }
+      }
+    },
+    "2": {
+      "validation": {
+        "n": 3626,
+        "mae": 0.025514109315197417,
+        "rmse": 0.06885733095891343,
+        "bias": 0.0030865030679973564,
+        "r2": 0.9653292913036732
+      },
+      "holdout": {
+        "n": 4835,
+        "mae": 0.020817727466673114,
+        "rmse": 0.04890976058801419,
+        "bias": 0.004326412236954728,
+        "r2": 0.9792183086221764
+      },
+      "holdout_candidates": {
+        "hist_gradient_boosting": {
+          "n": 4835,
+          "mae": 0.020817727466673114,
+          "rmse": 0.04890976058801419,
+          "bias": 0.004326412236954728,
+          "r2": 0.9792183086221764
+        },
+        "wind_bin_curve": {
+          "n": 4835,
+          "mae": 0.022385203095493533,
+          "rmse": 0.0480127406279879,
+          "bias": 0.0017586500950655434,
+          "r2": 0.9799736034958129
+        }
+      }
+    }
+  },
+  "limitations": [
+    "February 2026 turbine observations are absent; no February actual-power score is available.",
+    "Validation and holdout use observed wind and temperature, so they are conditional weather-to-power diagnostics, not day-ahead forecast skill.",
+    "Prediction intervals calibrate power-model residuals conditional on supplied weather and exclude weather-forecast uncertainty.",
+    "Input timestamps were treated as Asia/Almaty local time; normalized output is not kW or kWh."
+  ]
+}

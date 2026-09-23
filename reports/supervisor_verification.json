@@ -1,0 +1,27 @@
+{
+  "source_hashes_match": true,
+  "january_rows": 672,
+  "january_metrics_recomputed": {
+    "1:0-23": {
+      "mae": 0.1397913100942112,
+      "persistence_mae": 0.28495039682539675
+    },
+    "1:24-47": {
+      "mae": 0.13548205884559153,
+      "persistence_mae": 0.2291865079365079
+    },
+    "2:0-23": {
+      "mae": 0.13889713452773295,
+      "persistence_mae": 0.29944444444444446
+    },
+    "2:24-47": {
+      "mae": 0.13332373142306095,
+      "persistence_mae": 0.21441468253968252
+    }
+  },
+  "february_origins": 28,
+  "february_rows": 2688,
+  "live_http_smoke": "passed: health, forecast, CSV, dashboard compatibility endpoint over localhost TCP",
+  "february_accuracy": "unavailable: supplied actual observations stop on January 31",
+  "status": "passed"
+}
