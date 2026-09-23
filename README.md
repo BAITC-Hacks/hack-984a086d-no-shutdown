@@ -105,3 +105,19 @@ ECMWF / Open-Meteo ──> проверка доступности/кэша ─�
 Финальная проверка: **88 passed, 21 subtests passed**; было одно предупреждение Starlette. В браузере проверены live T1/48 ч и T2/24 ч, архивный режим с предупреждением, ответ чата о лучшем трёхчасовом окне и четыре изображения; при 1280 px переполнения не было, ошибок и предупреждений консоли — 0. Свежий live-запрос для обеих турбин подтверждён в `reports/premium_live_proof.json`. Preview через браузер не проверялся: политика среды заблокировала локальный `file://` просмотр. Архивный hindcast всё ещё не доказывает историческую доступность; февральских фактов для оценки точности нет.
 
 Полезные материалы: [инструкция для первого запуска](START_HERE.md), [карта критериев и сценарий защиты](docs/CRITERIA.md), [аудит премиальной сборки](docs/PREMIUM_REVIEW.md), [модель и временная валидация](docs/TUNING.md), [погода и ограничения архива](docs/WEATHER.md), [live-режим](docs/LIVE.md).
+
+## Planned interactive features
+
+The following features are planned enhancements, not implemented features of the current release.
+
+### What if the wind changes?
+
+A slider from **−30% to +30%** will let users adjust wind speed and rerun the power model. The chart will show the original forecast alongside the scenario forecast. The adjusted output must carry a prominent **“Scenario”** label so it cannot be confused with an actual weather forecast.
+
+### Live agent workflow
+
+Clicking **“Recalculate”** will highlight the stages **Weather → Data validation → Model → Analysis → Result**. Each stage will expand to show its data source, execution time, and any issues detected. Status updates must come from the actual Python execution, rather than a simulated animation.
+
+### Turbine battle: T1 vs T2
+
+Two synchronized charts will compare the turbines’ peak output and power stability. The view will highlight hours when one turbine produces more than the other on the **normalized power scale**, with an **“Explain the difference”** button beside the comparison.
