@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Интерактивный прототип прогноза ветровой генерации на 48 часов">
+  <title>Wind Dispatch — прогноз генерации</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script defer src="https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+<div id="wind-dispatch" aria-label="Диспетчерская ветроэнергии">
+  <div class="wd-top"><div class="wd-brand"><i data-lucide="wind" aria-hidden="true"></i> WIND / DISPATCH</div><span class="wd-tag">ДЕМО · МОК-ДАННЫЕ</span></div>
+  <div class="wd-title"><div><div class="wd-eyebrow">ПРОГНОЗ ГЕНЕРАЦИИ / 01</div><h1>Энергия на горизонте.</h1><p>48 часов вперёд. Каждый мегаватт — на виду.</p></div><div class="wd-mono wd-small wd-muted">ФЕВРАЛЬ 2026<br>Все отметки времени · UTC</div></div>
+  <div class="wd-controls"><label class="wd-field">Ветротурбина<select name="turbine" aria-label="Ветротурбина"><option value="T1">T1 / Северная · 2,5 МВт</option><option value="T2">T2 / Южная · 3,2 МВт</option></select></label><label class="wd-field">Дата среза · as_of_date<input name="date" type="date" min="2026-02-01" max="2026-02-28" value="2026-02-10" required></label><button class="wd-refresh" type="button"><i data-lucide="refresh-cw" aria-hidden="true"></i><span>Пересчитать</span></button></div>
+  <div class="wd-error" role="alert" hidden></div>
+  <div class="wd-kpis" aria-label="Сводка прогноза">
+    <div class="wd-kpi"><div class="wd-kpi-label">Энергия / первые 24 ч</div><div class="wd-value wd-mono"><span data-metric="energy24">—</span><span class="wd-unit">МВт·ч</span></div><div class="wd-kpi-note">Сумма часовой генерации</div></div>
+    <div class="wd-kpi"><div class="wd-kpi-label">Энергия / все 48 ч</div><div class="wd-value wd-mono"><span data-metric="energy48">—</span><span class="wd-unit">МВт·ч</span></div><div class="wd-kpi-note" data-metric="capacity">—</div></div>
+    <div class="wd-kpi"><div class="wd-kpi-label">Пиковая мощность / 48 ч</div><div class="wd-value wd-mono"><span data-metric="peak">—</span><span class="wd-unit">МВт</span></div><div class="wd-kpi-note wd-mono" data-metric="peakTime">—</div></div>
+    <div class="wd-kpi"><div class="wd-kpi-label">Средний ветер / 48 ч</div><div class="wd-value wd-mono"><span data-metric="wind">—</span><span class="wd-unit">м/с</span></div><div class="wd-kpi-note" data-metric="windRange">—</div></div>
+  </div>
+  <section class="wd-chartbox" aria-label="Прогноз мощности и ветра"><div class="wd-charthead"><div><h2>Профиль генерации</h2><div class="wd-status" role="status" aria-live="polite"></div></div><div class="wd-segment" aria-label="Горизонт графика"><button type="button" data-horizon="24" aria-pressed="false">24 ч</button><button type="button" data-horizon="48" aria-pressed="true">48 ч</button></div></div>
+    <div class="wd-legend"><button type="button" class="wd-series" data-series="power" aria-pressed="true"><span class="wd-swatch"></span>Мощность</button><button type="button" class="wd-series" data-series="wind" aria-pressed="true"><span class="wd-swatch wind"></span>Ветер</button></div>
+    <div class="wd-plot"><svg role="img" aria-label="Почасовой прогноз мощности и скорости ветра"></svg><div class="wd-tooltip" role="tooltip" hidden></div></div>
+    <div class="wd-hour-control"><label for="wd-hour">Выбрать час</label><input id="wd-hour" type="range" min="0" max="47" value="12" aria-label="Час прогноза"><span class="wd-mono" data-hour-label>+12 ч</span></div><div class="wd-detail wd-mono" aria-live="polite"></div>
+    <div class="wd-chartfoot"><span>Почасовые средние · шаг 1 ч</span><span>Сводка всегда рассчитана за 24 / 48 ч</span></div>
+  </section>
+  <div class="wd-bottom"><section class="wd-panel"><div class="wd-row"><h2>Погодные входные данные</h2><span class="wd-small wd-muted">Средние / 48 ч</span></div><div class="wd-weather"><div><i data-lucide="wind" aria-hidden="true"></i><div class="wd-small wd-muted">Ветер</div><strong data-metric="weatherWind">—</strong><small>м/с</small></div><div><i data-lucide="thermometer" aria-hidden="true"></i><div class="wd-small wd-muted">Температура</div><strong data-metric="temperature">—</strong><small>°C</small></div><div><i data-lucide="gauge" aria-hidden="true"></i><div class="wd-small wd-muted">Макс. ветер</div><strong data-metric="maxWind">—</strong><small>м/с</small></div></div><div class="wd-source">Источник: синтетический погодный прогноз.<br>Координаты турбин не заданы.</div></section>
+    <section class="wd-panel"><div class="wd-row"><h2>Предупреждения агента</h2><span class="wd-small wd-muted" data-warning-count>—</span></div><div class="wd-warnings"></div></section></div>
+  <footer class="wd-footer"><i data-lucide="shield-check" aria-hidden="true"></i><div><strong data-cutoff>—</strong><p>В реальном API здесь должны использоваться только данные, доступные к срезу. В демо ограничение обозначено, проверка pipeline не выполняется.</p><div class="wd-metadata wd-mono" data-metadata></div></div></footer>
+</div>
+
+</body>
+</html>

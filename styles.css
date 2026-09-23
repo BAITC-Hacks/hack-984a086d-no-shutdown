@@ -1,0 +1,111 @@
+/* Основной фон сайта и ограничение ширины. */
+html { color-scheme: dark; background: #091523; }
+
+body { margin: 0; padding: 24px; }
+
+#wind-dispatch { max-width: 1200px; margin: 0 auto; }
+
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid #e1bd78; outline-offset: 3px; }
+
+@media (max-width: 600px) { body { padding: 0; }
+ }
+
+
+#wind-dispatch{--navy:#091523;--panel:#101f30;--edge:#27394a;--ink:#e9eef1;--sub:#9bacbd;--gold:#e1bd78;--teal:#77c4c2;--good:#92caaa;color-scheme:dark;background:var(--navy);color:var(--ink);font:14px/1.5 Manrope,system-ui,sans-serif;padding:28px;border-radius:18px;overflow:hidden}
+
+#wind-dispatch *{box-sizing:border-box}
+#wind-dispatch button,#wind-dispatch input,#wind-dispatch select{font:inherit}
+#wind-dispatch button{cursor:pointer}
+#wind-dispatch button:disabled{cursor:wait;opacity:.55}
+#wind-dispatch h1,#wind-dispatch h2,#wind-dispatch p{margin:0}
+#wind-dispatch h1{font:400 38px/1.15 Fraunces,Georgia,serif;letter-spacing:-1.1px}
+#wind-dispatch h2{font-size:16px;font-weight:600}
+#wind-dispatch .wd-mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+#wind-dispatch .wd-muted{color:var(--sub)}
+#wind-dispatch .wd-small{font-size:12px}
+#wind-dispatch .wd-top,#wind-dispatch .wd-title,#wind-dispatch .wd-row{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+#wind-dispatch .wd-top{padding-bottom:22px;border-bottom:1px solid var(--edge)}
+#wind-dispatch .wd-brand{letter-spacing:3px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:10px}
+#wind-dispatch .wd-brand i{color:var(--gold)}
+#wind-dispatch .wd-tag{border:1px solid var(--edge);border-radius:30px;padding:5px 10px;color:var(--sub);font-size:11px;letter-spacing:1px;display:inline-flex;align-items:center;gap:8px}
+#wind-dispatch .wd-tag:before{content:'';width:6px;height:6px;border-radius:50%;background:var(--gold)}
+#wind-dispatch .wd-title{margin:27px 0 24px;align-items:flex-end}
+#wind-dispatch .wd-title p{margin-top:9px;color:var(--sub)}
+#wind-dispatch .wd-eyebrow{font-size:11px;letter-spacing:1.8px;color:var(--sub);margin-bottom:9px}
+#wind-dispatch .wd-controls{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;padding:17px 18px;background:var(--panel);border:1px solid var(--edge);border-radius:10px;margin-bottom:22px}
+#wind-dispatch .wd-field{display:grid;gap:7px;flex:1;min-width:160px;color:var(--sub);font-size:12px}
+#wind-dispatch select,#wind-dispatch input{width:100%;min-height:43px;padding:10px 12px;background:var(--navy);color:var(--ink);border:1px solid var(--edge);border-radius:6px}
+#wind-dispatch .wd-refresh{background:var(--gold);color:#192333;border:0;border-radius:6px;padding:11px 18px;min-height:43px;display:flex;gap:8px;align-items:center;font-weight:700}
+#wind-dispatch .wd-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
+#wind-dispatch .wd-kpi{padding:19px 17px;border:1px solid var(--edge);border-radius:9px;background:var(--panel)}
+#wind-dispatch .wd-kpi:first-child{border-top:2px solid var(--gold);padding-top:18px}
+#wind-dispatch .wd-kpi-label{color:var(--sub);font-size:12px}
+#wind-dispatch .wd-value{font-size:28px;margin:12px 0 5px;letter-spacing:-1px;white-space:nowrap}
+#wind-dispatch .wd-unit{font:12px Manrope,sans-serif;color:var(--sub);letter-spacing:0;margin-left:4px}
+#wind-dispatch .wd-kpi-note{font-size:11px;color:var(--sub)}
+#wind-dispatch .wd-chartbox{padding:21px 19px 14px;background:var(--panel);border:1px solid var(--edge);border-radius:10px}
+#wind-dispatch .wd-charthead{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;flex-wrap:wrap}
+#wind-dispatch .wd-legend{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0 0}
+#wind-dispatch .wd-series{border:0;padding:2px 0;background:transparent;color:var(--ink);font-size:12px;display:flex;align-items:center;gap:8px;min-height:28px}
+#wind-dispatch .wd-series[aria-pressed=false]{opacity:.45;text-decoration:line-through}
+#wind-dispatch .wd-swatch{display:inline-block;width:19px;height:0;border-top:2px solid var(--gold)}
+#wind-dispatch .wd-swatch.wind{border-color:var(--teal);border-top-style:dashed}
+#wind-dispatch .wd-segment{display:flex;border:1px solid var(--edge);border-radius:6px;padding:3px}
+#wind-dispatch .wd-segment button{border:0;background:transparent;color:var(--sub);padding:6px 12px;border-radius:4px;font-size:12px}
+#wind-dispatch .wd-segment button[aria-pressed=true]{background:var(--edge);color:var(--ink)}
+#wind-dispatch .wd-plot{position:relative;margin-top:10px;width:100%;min-height:280px}
+#wind-dispatch .wd-plot svg{display:block;width:100%;overflow:visible}
+#wind-dispatch .wd-plot text{font:11px 'IBM Plex Mono',monospace;fill:var(--sub)}
+#wind-dispatch .wd-tooltip{position:absolute;z-index:3;pointer-events:none;background:#08131f;border:1px solid #415062;border-radius:7px;padding:10px 12px;box-shadow:0 7px 25px #0005;font-size:12px;min-width:166px}
+#wind-dispatch .wd-tooltip div{display:flex;justify-content:space-between;gap:20px;margin-top:6px}
+#wind-dispatch .wd-chartfoot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;border-top:1px solid var(--edge);padding-top:12px;color:var(--sub);font-size:11px}
+#wind-dispatch .wd-bottom{display:grid;grid-template-columns:1.05fr 1fr;gap:16px;margin-top:20px}
+#wind-dispatch .wd-panel{padding:20px;border:1px solid var(--edge);border-radius:10px;background:var(--panel)}
+#wind-dispatch .wd-weather{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0 20px}
+#wind-dispatch .wd-weather i{color:var(--sub);margin-bottom:8px}
+#wind-dispatch .wd-weather strong{display:block;font:400 21px 'IBM Plex Mono',monospace;margin-top:5px;white-space:nowrap}
+#wind-dispatch .wd-weather small{color:var(--sub);font-size:11px}
+#wind-dispatch .wd-source{font-size:11px;color:var(--sub);border-top:1px solid var(--edge);padding-top:12px}
+#wind-dispatch .wd-warning{display:flex;align-items:flex-start;gap:10px;margin-top:16px;font-size:12px}
+#wind-dispatch .wd-warning i{flex-shrink:0;color:var(--gold);margin-top:3px}
+#wind-dispatch .wd-warning.info i{color:var(--teal)}
+#wind-dispatch .wd-warning strong{display:block;font-weight:600;margin-bottom:4px}
+#wind-dispatch .wd-warning p{color:var(--sub)}
+#wind-dispatch .wd-footer{display:flex;align-items:flex-start;gap:11px;margin-top:22px;padding-top:19px;border-top:1px solid var(--edge);font-size:12px;color:var(--sub)}
+#wind-dispatch .wd-footer i{color:var(--good);flex-shrink:0;margin-top:2px}
+#wind-dispatch .wd-footer strong{font-weight:500;color:var(--ink)}
+#wind-dispatch .wd-metadata{margin-top:8px;font-size:10px;overflow-wrap:anywhere}
+#wind-dispatch .wd-error{color:#ffb3a4;padding:0 0 15px}
+#wind-dispatch [hidden]{display:none!important}
+#wind-dispatch .wd-status{color:var(--sub);font-size:11px;margin-top:7px}
+#wind-dispatch .wd-hour-control{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--sub);margin-bottom:10px}
+#wind-dispatch .wd-hour-control input{padding:0;min-height:24px;accent-color:var(--gold);border:0;background:transparent;flex:1;min-width:70px}
+#wind-dispatch .wd-detail{font-size:11px;color:var(--sub);margin-bottom:10px;min-height:18px}
+#wind-dispatch .wd-visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+
+@media(max-width:700px){#wind-dispatch{padding:20px}
+#wind-dispatch .wd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+#wind-dispatch .wd-bottom{grid-template-columns:1fr}
+#wind-dispatch h1{font-size:32px}
+#wind-dispatch .wd-value{font-size:26px}
+}
+
+@media(max-width:420px){#wind-dispatch{padding:14px;border-radius:10px}
+#wind-dispatch h1{font-size:29px}
+#wind-dispatch .wd-controls{padding:12px}
+#wind-dispatch .wd-field{min-width:100%;flex-basis:100%}
+#wind-dispatch .wd-refresh{width:100%;justify-content:center}
+#wind-dispatch .wd-kpi{padding:13px 10px}
+#wind-dispatch .wd-value{font-size:23px}
+#wind-dispatch .wd-unit{display:block;margin:3px 0 0}
+#wind-dispatch .wd-chartbox{padding:16px 9px 12px}
+#wind-dispatch .wd-panel{padding:16px}
+#wind-dispatch .wd-weather{gap:6px}
+#wind-dispatch .wd-weather strong{font-size:18px}
+#wind-dispatch .wd-kpi-note{font-size:11px}
+}
+
+@media(pointer:coarse){#wind-dispatch button{min-height:44px}
+#wind-dispatch .wd-hour-control input{min-height:44px}
+}
+
