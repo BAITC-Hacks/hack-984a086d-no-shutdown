@@ -134,4 +134,4 @@ Load only trusted local model artifacts. The API is intended for local hackathon
 - [Open-Meteo Single Runs API](https://open-meteo.com/en/docs/single-runs-api)
 - [scikit-learn histogram gradient boosting](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingRegressor.html)
 - [FastAPI deployment guidance](https://fastapi.tiangolo.com/deployment/manually/)
-
+-[Presentation](https://canva.link/istoddntna5ut7e)
