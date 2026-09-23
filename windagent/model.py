@@ -17,7 +17,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 FEATURE_SCHEMA = [
     "wind_speed", "temperature", "hour_sin", "hour_cos", "year_day_sin", "year_day_cos"
 ]
-MODEL_VERSION = "conditional-power-v1"
+MODEL_VERSION = "conditional-power-v2"
 
 
 def make_features(weather: pd.DataFrame) -> pd.DataFrame:
@@ -48,8 +48,9 @@ def make_features(weather: pd.DataFrame) -> pd.DataFrame:
 class WindBinCurve:
     """Small interpolated wind-speed bin mean baseline."""
 
-    def __init__(self, bin_width: float = 1.0):
+    def __init__(self, bin_width: float = 1.0, statistic: str = "mean"):
         self.bin_width = bin_width
+        self.statistic = statistic
 
     def fit(self, x: pd.DataFrame, y: np.ndarray) -> "WindBinCurve":
         wind = x["wind_speed"].to_numpy()
@@ -60,7 +61,7 @@ class WindBinCurve:
         for i in np.unique(index):
             mask = index == i
             centers.append(float(np.mean(wind[mask])))
-            means.append(float(np.mean(y[mask])))
+            means.append(float(np.median(y[mask]) if self.statistic == "median" else np.mean(y[mask])))
         self.centers_ = np.asarray(centers)
         self.means_ = np.asarray(means)
         return self
@@ -70,14 +71,66 @@ class WindBinCurve:
                          left=self.means_[0], right=self.means_[-1])
 
 
-def candidate_models() -> dict[str, Any]:
-    return {
+class WeatherOnlyModel:
+    """Feature ablation: omit clock/season proxies that may overfit curtailment."""
+
+    def __init__(self, estimator: Any):
+        self.estimator = estimator
+
+    def fit(self, x: pd.DataFrame, y: np.ndarray) -> "WeatherOnlyModel":
+        self.estimator.fit(x[["wind_speed", "temperature"]], y)
+        return self
+
+    def predict(self, x: pd.DataFrame) -> np.ndarray:
+        return self.estimator.predict(x[["wind_speed", "temperature"]])
+
+
+def candidate_models(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Bounded deterministic search; baseline reproduces the original estimator.
+
+    Additional HGB candidates optimize absolute loss because selection uses MAE.
+    Early stopping is disabled: all fit rows precede the validation window.
+    The supplied config can limit candidates and override HGB parameters.
+    """
+    result = {
         "hist_gradient_boosting": HistGradientBoostingRegressor(
             max_iter=160, learning_rate=0.06, max_leaf_nodes=23,
             min_samples_leaf=35, l2_regularization=1.0, random_state=17,
         ),
         "wind_bin_curve": WindBinCurve(),
+        "wind_median_curve": WindBinCurve(0.25, statistic="median"),
+        "hgb_mae_smooth": HistGradientBoostingRegressor(
+            loss="absolute_error", max_iter=240, learning_rate=0.06,
+            max_leaf_nodes=15, min_samples_leaf=60, l2_regularization=2,
+            early_stopping=False, random_state=17,
+        ),
+        "hgb_mae_detailed": HistGradientBoostingRegressor(
+            loss="absolute_error", max_iter=300, learning_rate=0.05,
+            max_leaf_nodes=23, min_samples_leaf=35, l2_regularization=1,
+            early_stopping=False, random_state=17,
+        ),
+        "hgb_mae_weather_only": WeatherOnlyModel(HistGradientBoostingRegressor(
+            loss="absolute_error", max_iter=240, learning_rate=0.06,
+            max_leaf_nodes=15, min_samples_leaf=60, l2_regularization=2,
+            early_stopping=False, random_state=17,
+        )),
     }
+    if config:
+        unknown_keys = set(config) - {"candidates", "overrides"}
+        if unknown_keys:
+            raise ValueError(f"unknown model config keys: {sorted(unknown_keys)}")
+        names = config.get("candidates", list(result))
+        if not names or set(names) - set(result):
+            raise ValueError(f"candidates must be a nonempty subset of {list(result)}")
+        for name, parameters in config.get("overrides", {}).items():
+            if name not in result:
+                raise ValueError(f"unknown candidate {name}")
+            estimator = result[name].estimator if isinstance(result[name], WeatherOnlyModel) else result[name]
+            if not hasattr(estimator, "set_params"):
+                raise ValueError(f"{name} does not support overrides")
+            estimator.set_params(**parameters)
+        result = {name: result[name] for name in names}
+    return result
 
 
 def regression_metrics(actual: np.ndarray, predicted: np.ndarray) -> dict[str, float | int]:

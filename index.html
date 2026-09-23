@@ -3,36 +3,104 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Интерактивный прототип прогноза ветровой генерации на 48 часов">
-  <title>Wind Dispatch — прогноз генерации</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap">
+  <meta name="theme-color" content="#070e1a">
+  <meta name="description" content="Wind / Agent — интеллектуальный прогноз выработки ветроэлектростанции. Реальные данные, почасовой прогноз и AI-аналитик.">
+  <title>Wind / Agent — энергия под вашим контролем</title>
   <link rel="stylesheet" href="styles.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
-  <script defer src="https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js"></script>
   <script defer src="app.js"></script>
 </head>
 <body>
-<div id="wind-dispatch" aria-label="Диспетчерская ветроэнергии">
-  <div class="wd-top"><div class="wd-brand"><i data-lucide="wind" aria-hidden="true"></i> WIND / DISPATCH</div><span class="wd-tag">ДЕМО · МОК-ДАННЫЕ</span></div>
-  <div class="wd-title"><div><div class="wd-eyebrow">ПРОГНОЗ ГЕНЕРАЦИИ / 01</div><h1>Энергия на горизонте.</h1><p>48 часов вперёд. Каждый мегаватт — на виду.</p></div><div class="wd-mono wd-small wd-muted">ФЕВРАЛЬ 2026<br>Все отметки времени · UTC</div></div>
-  <div class="wd-controls"><label class="wd-field">Ветротурбина<select name="turbine" aria-label="Ветротурбина"><option value="T1">T1 / Северная · 2,5 МВт</option><option value="T2">T2 / Южная · 3,2 МВт</option></select></label><label class="wd-field">Дата среза · as_of_date<input name="date" type="date" min="2026-02-01" max="2026-02-28" value="2026-02-10" required></label><button class="wd-refresh" type="button"><i data-lucide="refresh-cw" aria-hidden="true"></i><span>Пересчитать</span></button></div>
-  <div class="wd-error" role="alert" hidden></div>
-  <div class="wd-kpis" aria-label="Сводка прогноза">
-    <div class="wd-kpi"><div class="wd-kpi-label">Энергия / первые 24 ч</div><div class="wd-value wd-mono"><span data-metric="energy24">—</span><span class="wd-unit">МВт·ч</span></div><div class="wd-kpi-note">Сумма часовой генерации</div></div>
-    <div class="wd-kpi"><div class="wd-kpi-label">Энергия / все 48 ч</div><div class="wd-value wd-mono"><span data-metric="energy48">—</span><span class="wd-unit">МВт·ч</span></div><div class="wd-kpi-note" data-metric="capacity">—</div></div>
-    <div class="wd-kpi"><div class="wd-kpi-label">Пиковая мощность / 48 ч</div><div class="wd-value wd-mono"><span data-metric="peak">—</span><span class="wd-unit">МВт</span></div><div class="wd-kpi-note wd-mono" data-metric="peakTime">—</div></div>
-    <div class="wd-kpi"><div class="wd-kpi-label">Средний ветер / 48 ч</div><div class="wd-value wd-mono"><span data-metric="wind">—</span><span class="wd-unit">м/с</span></div><div class="wd-kpi-note" data-metric="windRange">—</div></div>
-  </div>
-  <section class="wd-chartbox" aria-label="Прогноз мощности и ветра"><div class="wd-charthead"><div><h2>Профиль генерации</h2><div class="wd-status" role="status" aria-live="polite"></div></div><div class="wd-segment" aria-label="Горизонт графика"><button type="button" data-horizon="24" aria-pressed="false">24 ч</button><button type="button" data-horizon="48" aria-pressed="true">48 ч</button></div></div>
-    <div class="wd-legend"><button type="button" class="wd-series" data-series="power" aria-pressed="true"><span class="wd-swatch"></span>Мощность</button><button type="button" class="wd-series" data-series="wind" aria-pressed="true"><span class="wd-swatch wind"></span>Ветер</button></div>
-    <div class="wd-plot"><svg role="img" aria-label="Почасовой прогноз мощности и скорости ветра"></svg><div class="wd-tooltip" role="tooltip" hidden></div></div>
-    <div class="wd-hour-control"><label for="wd-hour">Выбрать час</label><input id="wd-hour" type="range" min="0" max="47" value="12" aria-label="Час прогноза"><span class="wd-mono" data-hour-label>+12 ч</span></div><div class="wd-detail wd-mono" aria-live="polite"></div>
-    <div class="wd-chartfoot"><span>Почасовые средние · шаг 1 ч</span><span>Сводка всегда рассчитана за 24 / 48 ч</span></div>
-  </section>
-  <div class="wd-bottom"><section class="wd-panel"><div class="wd-row"><h2>Погодные входные данные</h2><span class="wd-small wd-muted">Средние / 48 ч</span></div><div class="wd-weather"><div><i data-lucide="wind" aria-hidden="true"></i><div class="wd-small wd-muted">Ветер</div><strong data-metric="weatherWind">—</strong><small>м/с</small></div><div><i data-lucide="thermometer" aria-hidden="true"></i><div class="wd-small wd-muted">Температура</div><strong data-metric="temperature">—</strong><small>°C</small></div><div><i data-lucide="gauge" aria-hidden="true"></i><div class="wd-small wd-muted">Макс. ветер</div><strong data-metric="maxWind">—</strong><small>м/с</small></div></div><div class="wd-source">Источник: синтетический погодный прогноз.<br>Координаты турбин не заданы.</div></section>
-    <section class="wd-panel"><div class="wd-row"><h2>Предупреждения агента</h2><span class="wd-small wd-muted" data-warning-count>—</span></div><div class="wd-warnings"></div></section></div>
-  <footer class="wd-footer"><i data-lucide="shield-check" aria-hidden="true"></i><div><strong data-cutoff>—</strong><p>В реальном API здесь должны использоваться только данные, доступные к срезу. В демо ограничение обозначено, проверка pipeline не выполняется.</p><div class="wd-metadata wd-mono" data-metadata></div></div></footer>
-</div>
+  <a class="skip-link" href="#forecast">К прогнозу</a>
+  <div class="hero-background" aria-hidden="true"><img src="assets/wind-night.jpg" alt="" fetchpriority="high"></div>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Wind Agent — главная"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M16 3v12L6 21M16 15l10 6M16 15v14"/><circle cx="16" cy="15" r="3"/></svg></span><span>wind<span class="brand-slash">/</span>agent</span></a>
+      <nav aria-label="Разделы"><a class="nav-link active" href="#forecast">Обзор</a><a class="nav-link" href="#model-section">Модель и данные</a><a class="nav-link" href="#agent-chat">Agentic AI <span>↗</span></a></nav>
+      <div class="connection-badge" role="status"><span class="status-dot"></span><span id="connection-label">Подключение к API</span></div>
+    </header>
 
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <div class="hero-copy">
+          <p class="eyebrow"><span></span> WIND INTELLIGENCE PLATFORM</p>
+          <h1 id="page-title">Энергия будущего.<br><span>Под вашим контролем.</span></h1>
+          <p class="hero-subtitle">Понимать ветер. Предвидеть генерацию.<br>Принимать решения с уверенностью в данных.</p>
+          <div class="hero-actions"><a class="hero-link" href="#forecast">Открыть прогноз <span>↗</span></a><span class="hero-caption">Почасовая аналитика на 24–48 часов</span></div>
+        </div>
+        <div class="hero-signal" aria-label="Две турбины, горизонт до 48 часов"><div class="signal-visual" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div class="hero-signal-stats"><div><strong>02</strong><span>ветротурбины</span></div><div><strong>48<span>ч</span></strong><span>горизонт прогноза</span></div></div><div class="hero-signal-footer"><span class="status-dot"></span> ДАННЫЕ → ПРОГНОЗ → РЕШЕНИЕ</div></div>
+      </section>
+
+      <section class="dashboard-heading" aria-label="Режим работы">
+        <div><p class="section-index">ВАША ДИСПЕТЧЕРСКАЯ</p><h2>Всё важное. На одном экране.</h2></div>
+        <div class="mode-toggle" role="group" aria-label="Режим прогноза"><button type="button" data-mode="backtest" aria-pressed="false">Архив <span>срез</span></button><button type="button" data-mode="live" aria-pressed="true"><span class="live-dot"></span>Сейчас <span>live</span></button></div>
+      </section>
+      <section class="control-bar" aria-label="Параметры прогноза">
+        <div class="turbine-toggle" role="group" aria-label="Выбор турбины">
+          <button type="button" data-turbine="T1" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v8m0 0L4 16m8-6 8 6m-8-6v12"/><circle cx="12" cy="10" r="2"/></svg><span>Турбина 01<small>43.645150° N · 78.535604° E</small></span></button>
+          <button type="button" data-turbine="T2" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v8m0 0L4 16m8-6 8 6m-8-6v12"/><circle cx="12" cy="10" r="2"/></svg><span>Турбина 02<small>43.643198° N · 78.538828° E</small></span></button>
+        </div>
+        <label class="date-control"><span><span id="date-caption">Дата среза</span> <span class="mono" id="date-hint">· 00:00 UTC+5</span></span><input id="forecast-date" type="date" min="2026-01-31" max="2026-02-28" value="2026-02-01" required></label>
+        <button class="primary-button" id="refresh-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 7a7 7 0 0 1 11.5-1L20 9M4 15l2.3 3A7 7 0 0 0 18 17"/></svg><span>Пересчитать</span></button>
+      </section>
+      <div class="mode-notice"><span class="notice-dot"></span><span id="mode-notice">Архивный прогноз · историческая доступность погоды требует подтверждения</span><a href="#weather-provenance">Подробнее <span>↗</span></a></div>
+      <div class="error-panel" id="forecast-error" role="alert" hidden></div>
+
+      <div class="kpi-grid" aria-label="Сводка прогноза" aria-live="polite">
+        <article class="kpi-card"><div class="kpi-label">Средняя мощность <span>24 часа</span></div><div class="kpi-value"><span data-metric="mean24">—</span><small>норм.</small></div><div class="kpi-bottom"><span class="kpi-mini-line" aria-hidden="true"></span><span>Первые сутки · шкала 0–1</span></div></article>
+        <article class="kpi-card"><div class="kpi-label">Средняя мощность <span data-horizon-label>Все 48 ч</span></div><div class="kpi-value"><span data-metric="meanAll">—</span><small>норм.</small></div><div class="kpi-bottom"><span class="kpi-mini-line blue" aria-hidden="true"></span><span>По выбранному горизонту</span></div></article>
+        <article class="kpi-card"><div class="kpi-label">Пиковая мощность <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 17 6-6 4 4 8-10m-6 0h6v6"/></svg></div><div class="kpi-value"><span data-metric="peak">—</span><small>норм.</small></div><div class="kpi-bottom" data-metric="peakTime">Ожидаем прогноз</div></article>
+        <article class="kpi-card"><div class="kpi-label">Средний ветер <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h13a3 3 0 1 0-3-3M2 12h17a3 3 0 1 1-3 3M4 17h5"/></svg></div><div class="kpi-value"><span data-metric="wind">—</span><small>м/с</small></div><div class="kpi-bottom" data-metric="windRange">Погодные входные данные</div></article>
+      </div>
+
+      <section class="capacity-summary" id="capacity-summary" aria-label="Оценка мощности и энергии при допущении о номинальной доле" hidden>
+        <div class="capacity-summary-heading"><div><p class="section-index">ОЦЕНКА ПО НОМИНАЛЬНОЙ МОЩНОСТИ</p><h2>Ориентир для выбранной турбины</h2></div><span class="capacity-badge">2,5 МВт · данные пользователя</span></div>
+        <div class="capacity-metrics"><div><span>Средняя мощность</span><strong><span data-capacity="mean-mw">—</span> <small>МВт</small></strong></div><div><span>Энергия / первые 24 ч</span><strong><span data-capacity="energy24">—</span> <small>МВт·ч</small></strong></div><div><span>Энергия / выбранный горизонт</span><strong><span data-capacity="energy-horizon">—</span> <small>МВт·ч</small></strong></div><div><span>Пиковая мощность</span><strong><span data-capacity="peak-mw">—</span> <small>МВт</small></strong></div></div>
+        <p class="capacity-note">Расчёт умножает нормализованный прогноз на 2,5 МВт и предполагает, что шкала 0–1 соответствует доле номинальной мощности. Это ориентир модели, не измеренная выработка; соответствие шкалы и фактическую номинальную мощность следует подтвердить.</p>
+        <div class="farm-summary" id="farm-summary" hidden><strong>Весь парк · расчётный итог</strong><span>Первые 24 ч: <b data-farm="energy24">—</b> МВт·ч</span><span>Горизонт: <b data-farm="energy-horizon">—</b> МВт·ч</span><small>Отображается только при наличии данных по обеим турбинам.</small></div>
+      </section>
+
+      <div class="workspace-grid">
+        <div class="data-column">
+          <section class="panel chart-panel" id="forecast" aria-labelledby="chart-title">
+            <div class="panel-heading"><div><p class="section-index">01 / ГЕНЕРАЦИЯ</p><h2 id="chart-title">Ветер. Мощность. Перспектива.</h2></div><div class="segmented" role="group" aria-label="Горизонт прогноза"><button type="button" data-horizon="24" aria-pressed="false">24 ч</button><button type="button" data-horizon="48" aria-pressed="true">48 ч</button></div></div>
+            <div class="chart-toolbar"><div class="legend" role="group" aria-label="Ряды графика"><button type="button" data-series="power" aria-pressed="true"><span class="legend-swatch"></span>Мощность</button><button type="button" data-series="wind" aria-pressed="true"><span class="legend-swatch wind-swatch"></span>Ветер</button><span class="interval-legend" id="interval-legend" hidden><span></span>Условный интервал</span></div><span class="chart-period mono" id="chart-period">—</span></div>
+            <div class="chart-wrap" id="chart-wrap"><svg id="forecast-chart" role="img" aria-label="Почасовой прогноз нормализованной мощности и скорости ветра"></svg><div class="chart-empty" id="chart-empty"><span class="loader"></span><p>Получаем погодные данные<br>и запускаем модель…</p></div><div class="chart-tooltip" id="chart-tooltip" role="tooltip" hidden></div></div>
+            <div class="hour-selector"><label for="forecast-hour">Час прогноза</label><input id="forecast-hour" type="range" min="0" max="47" value="12" disabled><output for="forecast-hour" id="hour-label" class="mono">+12 ч</output></div>
+            <div class="point-details" id="point-details"><div><span>Время · UTC+5</span><strong data-point="time">—</strong></div><div><span>Мощность · норм.</span><strong data-point="power">—</strong></div><div><span>Ветер · м/с</span><strong data-point="wind">—</strong></div><div><span>Температура · °C</span><strong data-point="temperature">—</strong></div></div>
+            <div class="chart-footnote"><span>Почасовые значения · мощность в шкале 0–1</span><button type="button" class="text-button" id="export-button" disabled>Скачать CSV <span>↗</span></button></div>
+          </section>
+
+          <section class="panel weather-panel" aria-labelledby="weather-title">
+            <div class="panel-heading"><div><p class="section-index">02 / ПОГОДА</p><h2 id="weather-title">Условия для генерации</h2></div><span class="source-tag" id="weather-source-tag">Архив прогноза</span></div>
+            <div class="weather-summary"><div class="weather-stat"><span class="weather-icon" aria-hidden="true">↗</span><div><span>Ветер в среднем</span><strong><span data-metric="weatherWind">—</span><small> м/с</small></strong></div></div><div class="weather-stat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0Z"/><path d="M12 8v10"/></svg><div><span>Температура</span><strong><span data-metric="temperature">—</span><small> °C</small></strong></div></div><div class="weather-stat"><span class="weather-icon" aria-hidden="true">≋</span><div><span>Максимум ветра</span><strong><span data-metric="maxWind">—</span><small> м/с</small></strong></div></div></div>
+            <details class="provenance-details" id="weather-provenance"><summary>Источник и прозрачность данных <span>＋</span></summary><dl class="provenance-grid"><div><dt>Источник</dt><dd id="weather-source">—</dd></div><div><dt id="weather-run-label">Выпуск модели погоды</dt><dd id="weather-run" class="mono">—</dd></div><div><dt id="weather-available-label">Доступность по допущению</dt><dd id="weather-available" class="mono">—</dd></div><div><dt>Координаты турбины</dt><dd id="weather-coordinates" class="mono">43.645150, 78.535604</dd></div></dl><p class="provenance-note" id="provenance-note">Для архива используется допущение о задержке публикации. Историческая доступность выпуска не подтверждена.</p></details>
+          </section>
+        </div>
+
+        <aside class="assistant-column">
+          <section class="chat-panel" id="agent-chat" aria-labelledby="chat-title">
+            <div class="chat-head"><div class="agent-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2 2.5 6.5L21 11l-6.5 2.5L12 20l-2.5-6.5L3 11l6.5-2.5Z"/><path d="m20 18 1 2 2 1-2 1-1 2-1-2-2-1 2-1Z"/></svg></div><div><h2 id="chat-title">Agentic AI</h2><p><span class="status-dot"></span><span id="chat-mode">Локальный аналитик</span></p></div><button type="button" class="icon-button" id="clear-chat" aria-label="Начать новый чат" title="Новый чат">＋</button></div>
+            <div class="chat-context"><span>Сейчас анализируем</span><strong id="chat-context">T1 · 01.02 · 48 ч</strong></div>
+            <div class="chat-messages" id="chat-messages" role="log" aria-label="Сообщения Agentic AI" aria-live="polite"><article class="chat-message assistant-message"><span class="message-author">ВАШ AI-АНАЛИТИК</span><p>Превратим прогноз в решение.</p><p class="message-note">Сравню турбины, найду лучшие часы для генерации и объясню, что влияет на результат.</p></article></div>
+            <div class="chat-suggestions" aria-label="Примеры вопросов"><button type="button" data-prompt="Сравни турбины T1 и T2 по текущему прогнозу">Сравнить две турбины <span>↗</span></button><button type="button" data-prompt="Найди лучшее окно из 3 часов">Найти лучшие 3 часа <span>↗</span></button><button type="button" data-prompt="Сравни выработку завтра и сегодня">Завтра или сегодня? <span>↗</span></button><details class="more-prompts"><summary>Больше вопросов <span>＋</span></summary><button type="button" data-prompt="Когда ожидается самый резкий скачок мощности?">Самый резкий скачок мощности <span>↗</span></button><button type="button" data-prompt="Проверь качество и доступность данных">Проверить данные <span>↗</span></button><button type="button" data-prompt="Какая точность модели и что означает MAE?">Объяснить точность модели <span>↗</span></button></details></div>
+            <form class="chat-composer" id="chat-form"><label class="visually-hidden" for="chat-input">Сообщение Agentic AI</label><textarea id="chat-input" placeholder="Спросите о том, что важно…" rows="2" maxlength="4000" required></textarea><div class="composer-footer"><span><span class="composer-spark">✧</span> Agentic AI <small id="composer-mode">/ local</small></span><button type="submit" id="chat-send" aria-label="Отправить сообщение"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></div></form>
+            <p class="chat-disclaimer" id="chat-disclaimer">Локальный анализ данных по правилам · без LLM</p>
+          </section>
+          <a class="operations-card" href="#agent-chat"><img src="assets/operator.jpg" alt="Специалист в диспетчерской" loading="lazy"><div><span>ЧЕЛОВЕК + ИНТЕЛЛЕКТ</span><p>Больше ясности.<br>Лучше решения.</p><small>Спросить Agentic AI <span>↗</span></small></div></a>
+          <details class="panel warnings-panel"><summary class="warnings-heading"><span><span class="notice-dot"></span>Контроль агента</span><span class="count-pill" id="warning-count">—</span></summary><div id="warnings-list"><p class="muted">Проверки появятся после расчёта.</p></div></details>
+        </aside>
+      </div>
+
+      <section class="panel model-panel" id="model-section" aria-labelledby="model-title">
+        <div class="model-visual"><img src="assets/energy-grid.jpg" alt="Визуализация энергетической сети" loading="lazy"><span>CONNECTED BY DATA.</span></div>
+        <div class="model-content"><div class="model-intro"><p class="section-index">03 / ДОВЕРИЕ ЧЕРЕЗ ДАННЫЕ</p><h2 id="model-title">За каждым прогнозом —<br>измеримый результат.</h2><p>Проверка на исторических данных с измеренной погодой. Эти метрики не оценивают точность будущей погоды или февральского прогноза.</p></div><div class="model-metrics"><div><span>MAE <small>норм.</small></span><strong data-model="mae">—</strong><p>Средняя абсолютная ошибка</p></div><div><span>RMSE <small>норм.</small></span><strong data-model="rmse">—</strong><p>Чувствительность к крупным ошибкам</p></div><div><span>Обучающие часы</span><strong data-model="hours">—</strong><p id="model-period">Исторический ряд турбины</p></div></div><span class="model-name mono" id="model-name">Загружаем метаданные…</span></div>
+      </section>
+
+      <section class="panel curve-reference" aria-labelledby="curve-title"><div class="panel-heading"><div><p class="section-index">04 / ИСТОРИЧЕСКИЕ ДАННЫЕ</p><h2 id="curve-title">Кривые мощности турбин</h2></div><span class="source-tag">Исторические SCADA-наблюдения</span></div><img src="/assets/power_curves_turbines.png" alt="Исторические кривые нормализованной мощности в зависимости от скорости ветра для турбин 1 и 2" loading="lazy"><p>Справочные кривые показывают прошлые наблюдения и не являются текущим прогнозом или гарантией будущей генерации.</p></section>
+
+      <footer class="integrity-footer"><div class="integrity-title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg><div><strong id="cutoff-label">Прозрачность — часть прогноза.</strong><p id="integrity-note">Часовой пояс, нормализация мощности и высота ветра требуют подтверждения. Все ограничения доступны в карточке данных.</p></div></div><details class="metadata-details"><summary>Детали расчёта <span>＋</span></summary><div class="metadata mono" id="forecast-metadata">as_of_date · generated_at · model_version</div></details></footer>
+    </main>
+    <div class="page-bottom"><span>wind / agent</span><span>Чистая энергия. Ясные решения.</span><span>HACKALEM AI · 2026</span></div>
+  </div>
 </body>
 </html>

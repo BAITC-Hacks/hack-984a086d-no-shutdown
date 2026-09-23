@@ -1,4 +1,10 @@
-"""Acquisition of immutable ECMWF IFS HRES individual forecast runs."""
+"""Individual model-run inputs with explicit, limited historical provenance.
+
+An initialization time plus an assumed lag is NOT proof that the returned data
+was published at that time. In particular the provider calls the older IFS
+archive hindcasts. The default mode supports an honestly labelled reconstruction;
+strict historical mode refuses data without contemporaneous publication proof.
+"""
 
 from __future__ import annotations
 
@@ -23,6 +29,13 @@ SOURCE = "Open-Meteo Single Runs API / ECMWF IFS HRES 9 km"
 PUBLICATION_LAG = timedelta(hours=12)  # Conservative assumed lag; not measured.
 RUN_CADENCE_HOURS = 6
 MAX_RETRIES = 3
+PROVENANCE_POLICY_VERSION = "weather-provenance-v2"
+PROVENANCE_WARNING = (
+    "Historical weather publication is unverified: the provider describes this "
+    "IFS archive as hindcasts; available_at is run time + an assumed 12-hour lag, "
+    "not an observed publication time. This is a reconstruction, not proof of an "
+    "operational forecast available at the historical origin."
+)
 TURBINES: dict[int, tuple[float, float]] = {
     1: (43.645150, 78.535604),
     2: (43.643198, 78.538828),
@@ -42,7 +55,7 @@ def _as_utc_origin(origin: str | pd.Timestamp | datetime) -> pd.Timestamp:
         stamp = pd.Timestamp(origin)
     except Exception as exc:
         raise ValueError(f"Invalid origin: {origin!r}") from exc
-    if stamp.tzinfo is None:
+    if pd.isna(stamp) or stamp.tzinfo is None:
         raise ValueError("origin must include a timezone")
     return stamp.tz_convert("UTC")
 
@@ -141,7 +154,9 @@ def _request_json(params: dict[str, Any]) -> tuple[dict[str, Any], str]:
             with urlopen(request, timeout=40) as response:
                 raw = response.read()
                 data = json.loads(raw.decode("utf-8"))
-            if not isinstance(data, dict) or data.get("error"):
+            if not isinstance(data, dict):
+                raise WeatherUnavailableError("invalid API response: expected a JSON object")
+            if data.get("error"):
                 raise WeatherUnavailableError(str(data.get("reason", "invalid API response")))
             return data, hashlib.sha256(raw).hexdigest()
         except HTTPError as exc:
@@ -194,6 +209,12 @@ def _validate_and_frame(
     frame["available_at"] = available_at
     frame["source"] = SOURCE
     frame["source_hash"] = source_hash
+    # These fields are policy-derived on EVERY read. A cache cannot self-certify
+    # historical availability by adding a boolean or a made-up publication time.
+    frame["availability_basis"] = "assumed_12h_lag"
+    frame["provenance_status"] = "unverified_hindcast"
+    frame["as_of_verified"] = False
+    frame["provenance_policy"] = PROVENANCE_POLICY_VERSION
     if available_at > origin:
         raise WeatherUnavailableError("selected run was not available by the requested origin")
     return frame
@@ -205,12 +226,16 @@ def fetch_weather(
     horizon: int,
     cache_dir: Path,
     refresh: bool = False,
+    *,
+    strict_as_of: bool = False,
 ) -> pd.DataFrame:
-    """Return one exact, as-of-safe forecast horizon from one initialized run.
+    """Return one exact horizon from one initialized run, with provenance flags.
 
     ``origin`` must be timezone-aware. Returned timestamps and run provenance
     are UTC-aware. Cached JSON contains the exact API response and acquisition
     metadata; ``source_hash`` excludes fetch time and response-generation time.
+    This provider adapter has no publication receipts, so ``strict_as_of=True``
+    always rejects rather than treating the assumed availability as a fact.
     """
     if turbine_id not in TURBINES:
         raise ValueError(f"Unknown turbine_id {turbine_id}; expected one of {sorted(TURBINES)}")
@@ -219,20 +244,29 @@ def fetch_weather(
     origin_utc = _as_utc_origin(origin)
     if origin_utc.minute or origin_utc.second or origin_utc.microsecond or origin_utc.nanosecond:
         raise ValueError("origin must be aligned to the start of an hour")
+    if strict_as_of:
+        raise WeatherUnavailableError(PROVENANCE_WARNING)
     initialized_at = _run_for_origin(origin_utc)
     available_at = initialized_at + PUBLICATION_LAG
     if available_at > origin_utc:
         raise WeatherUnavailableError("no ECMWF IFS run satisfies the publication-lag rule")
     path = _cache_path(cache_dir, turbine_id, origin_utc, horizon)
-    if path.exists() and not refresh:
+    # The supplied archive is 48-hourly. A 24-hour view can safely reuse a fully
+    # validated superset without making a network request or fabricating weather.
+    candidate_paths = [(path, horizon)]
+    if horizon < 48:
+        candidate_paths.append((_cache_path(cache_dir, turbine_id, origin_utc, 48), 48))
+    for candidate_path, cached_horizon in candidate_paths if not refresh else []:
+        if not candidate_path.exists():
+            continue
         try:
-            cached = json.loads(path.read_text(encoding="utf-8"))
+            cached = json.loads(candidate_path.read_text(encoding="utf-8"))
             latitude, longitude = TURBINES[turbine_id]
-            expected_params = _request_params(turbine_id, origin_utc, horizon, initialized_at)
+            expected_params = _request_params(turbine_id, origin_utc, cached_horizon, initialized_at)
             expected_identity = {
                 "model": MODEL, "source": SOURCE, "turbine_id": turbine_id,
                 "coordinates": {"latitude": latitude, "longitude": longitude},
-                "requested_origin": origin_utc.isoformat(), "horizon": horizon,
+                "requested_origin": origin_utc.isoformat(), "horizon": cached_horizon,
                 "initialized_at": initialized_at.isoformat(), "available_at": available_at.isoformat(),
                 "publication_lag_hours": PUBLICATION_LAG.total_seconds() / 3600,
                 "request_params": expected_params,
@@ -241,15 +275,16 @@ def fetch_weather(
                 raise WeatherUnavailableError("cached run provenance does not match the requested run")
             computed_hash = _semantic_source_hash(
                 cached["response"], turbine_id=turbine_id, origin=origin_utc,
-                horizon=horizon, initialized_at=initialized_at,
+                horizon=cached_horizon, initialized_at=initialized_at,
             )
             if cached.get("source_hash") != computed_hash:
                 raise WeatherUnavailableError("cached source hash does not match forecast content")
-            return _validate_and_frame(
-                cached["response"], origin=origin_utc, horizon=horizon,
+            validated = _validate_and_frame(
+                cached["response"], origin=origin_utc, horizon=cached_horizon,
                 initialized_at=initialized_at, available_at=available_at,
                 source_hash=computed_hash,
             )
+            return validated.iloc[:horizon].copy().reset_index(drop=True)
         except (WeatherError, OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
             # A bad cache is discarded and fetched anew; it is never returned.
             pass
@@ -269,6 +304,9 @@ def fetch_weather(
         "initialized_at": initialized_at.isoformat(), "available_at": available_at.isoformat(),
         "publication_lag_hours": PUBLICATION_LAG.total_seconds() / 3600,
         "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "availability_basis": "assumed_12h_lag", "as_of_verified": False,
+        "provenance_status": "unverified_hindcast",
+        "provenance_policy": PROVENANCE_POLICY_VERSION,
         "request_params": params, "raw_response_sha256": raw_response_hash,
         "source_hash": source_hash, "response": response,
     }

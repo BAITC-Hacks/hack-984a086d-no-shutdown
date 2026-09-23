@@ -1,11 +1,97 @@
-# Weather source and replay provenance
+# Weather provenance: operational forecasts vs reconstruction
 
-The acquisition layer uses the [Open-Meteo Single Runs API](https://open-meteo.com/en/docs/single-runs-api), at `https://single-runs-api.open-meteo.com/v1/forecast`, and explicitly selects `models=ecmwf_ifs`. Open-Meteo documents this model as ECMWF IFS HRES at native 9 km resolution, with hourly runs archived from March 14, 2024. This is a dated forecast run selected through its UTC `run` parameter; no continuously stitched forecast, historical weather, or reanalysis endpoint is used. Open-Meteo's API documentation lists the valid IFS cycles as 00, 06, 12, and 18 UTC and describes the typical global-model distribution delay as 4–6 hours.
+## What the supplied files establish
 
-For an origin timestamp, the client chooses the latest six-hour run initialized no later than `origin - 12 hours`. The twelve-hour publication lag is a conservative replay assumption; it is not an observed per-run publication timestamp. `initialized_at` records the selected model cycle. `available_at` is the initialization plus this assumed lag, and requests are rejected if it falls after the origin. Future valid-time weather predictions from that already-issued run are used to forecast future power. The API response is filtered to exactly the requested horizon, inclusive of the origin hour.
+The 70 full-horizon JSON files (plus a 24-hour cache) under `data/weather/` contain individual `ecmwf_ifs` runs
+requested for two coordinates and stored in September 2026. They preserve the
+request, returned hourly weather, semantic hash, selected run initialization and
+an **assumed** availability timestamp. They cover January 1–7 and February 1–28
+forecast origins at 00:00 +05:00. These files are useful for a reproducible
+reconstruction. They do **not** prove that the exact weather values were published
+and available at each historical origin. A matching hash checks consistency of
+local data, not the authenticity or historical publication time of a provider.
 
-The site coordinates are turbine 1 at 43.645150, 78.535604 and turbine 2 at 43.643198, 78.538828. We request 100 m wind speed (m/s) as a proxy for the unknown turbine hub height and 2 m air temperature (°C). The source CSV does not identify hub height, so the 100 m choice is an explicit approximation rather than a known equipment specification. Coordinates were resolved from the source brief's map links.
+## Provider documentation checked on 2026-09-23
 
-Each cache JSON stores the exact raw API response, request parameters, coordinates, model run, assumed availability, fetch time, raw-response SHA-256, and a stable `source_hash`. The stable hash is calculated over the model/run identity and requested weather values, excluding fetch time and API generation-time metadata. Every cache read checks the full expected run identity and request parameters, validates UTC and variable units, and recomputes the semantic hash from the stored response before returning values. A mismatch becomes a cache miss and is fetched again. Refreshing the same unchanged run therefore preserves the source hash; changed values produce a different hash. `source` identifies the provider and model. The returned DataFrame carries `timestamp`, `wind_speed`, `temperature`, `initialized_at`, `available_at`, `source`, and `source_hash`; all time columns are UTC-aware. An unavailable run, missing hour, missing/non-finite value, invalid run metadata, wrong units/timezone, or malformed response raises `WeatherUnavailableError`; invalid caller arguments raise `ValueError`.
+[Open-Meteo Single Runs API](https://open-meteo.com/en/docs/single-runs-api)
+documents ECMWF IFS from March 2024 and calls the earlier archive Cycle 49R1
+hindcasts. Other models are generally archived there from April 2, 2026. The `run`
+parameter is initialization time, not publication time. Documentation of historical
+coverage therefore does not establish operational availability in February.
 
-The archival replay runs are stored under `data/weather/` when acquired successfully. The Single Runs archive is documented from March 2024, and its use permits run-by-run historical replay without substituting reanalysis. It does not establish what was actually visible to an operator at an exact historical minute, which is why the conservative availability assumption remains recorded.
+[Historical Forecast API](https://open-meteo.com/en/docs/historical-forecast-api)
+combines successive runs into a time series. It cannot replace an individual
+48-hour forecast issued at a historical origin. This project does not query that
+endpoint or substitute reanalysis when a run is missing.
+
+The supplied JSON metadata contains no contemporaneous publication receipt. This
+is an unresolved requirement for an official competition backtest; no claim of
+verified absence of future information should be made for this weather archive.
+A real operational archive or written provider clarification about these exact
+runs, their production inputs and dissemination times is needed before changing
+this status. This review did not make a new live weather acquisition.
+
+## Modes and fields
+
+The default mode is `historical_reconstruction`, allowing the supplied cache to
+be displayed with visible warnings. Every built-in weather result has:
+
+```json
+{
+  "availability_basis": "assumed_12h_lag",
+  "provenance_status": "unverified_hindcast",
+  "as_of_verified": false
+}
+```
+
+`available_at` is initialization + 12 hours. The client selects the latest
+00/06/12/18 UTC run satisfying that rule and requires all requested valid times.
+This is an explicit simulation policy, never an observed publication timestamp.
+The origin is the beginning of the first predicted hour; all stored timestamps
+are UTC-aware. Production model training must end before that first hour.
+
+Set `WINDAGENT_STRICT_AS_OF=1` before starting the server, or use
+`ForecastAgent(home, strict_as_of=True)`, to refuse unverified historical weather.
+The built-in archive will fail with an actionable message. The lower-level
+`fetch_weather(..., strict_as_of=True)` behaves the same way. Turning strict mode
+off does not certify the results. Imported cache fields cannot self-certify a
+run: status is assigned by the adapter policy on every read.
+
+An alternative verified adapter must return a boolean `as_of_verified`, a
+`publication_evidence` reference, `initialized_at <= available_at <= origin`, and
+one consistent run per turbine. Evidence still requires human/provider review;
+field validation is not a substitute for reviewing its provenance.
+
+## Acquisition and cache validation
+
+Coordinates are T1 `(43.645150, 78.535604)` and T2 `(43.643198, 78.538828)`.
+The request uses `wind_speed_100m` in m/s and `temperature_2m` in °C. Actual turbine
+hub height is unknown, and measured training wind may be from a different height.
+The provider grid coordinates can differ from the turbine coordinates; both
+nearby turbines may receive the same coarse grid cell. The 100 m wind choice is
+a proxy and is not bias calibrated to the site.
+
+Every cache read validates request identity, expected run, coordinates, units,
+timezone, consecutive hours, finite values, nonnegative wind and semantic hash.
+24-hour requests reuse the first half of a fully validated 48-hour cache offline.
+An invalid cache is not returned; acquisition is attempted instead. Temporary
+provider failures are retried with bounded backoff. Missing hours are an error,
+not interpolated observations or generated mocks. JSON writes use temporary files
+and atomic rename. Raw response hashes are stored but the original byte stream
+is not, so only the semantic hash can be recomputed from the delivered JSON.
+
+## Agent integrity and refresh
+
+Each persisted result includes the exact covariates used by inference. The API
+can show those values without fetching different weather after prediction.
+The pipeline version is part of its cache identity, preventing reuse of earlier
+results that omitted these warnings. Changed weather or model hashes trigger
+recalculation; unchanged inputs reuse a previous calculation and create a new
+audit entry. A refresh polls the same historical model run, so a successful
+refresh does not imply that a newer run existed at the historical origin.
+Failures are persisted and reported. A model that changes while a forecast is
+running is rejected to avoid mixing models or reporting the wrong artifact hash.
+
+Training interval endpoints are checked against the declared model cutoff and
+forecast origin. These guards prevent known local leakage. They cannot establish
+provider-side availability, CSV timezone conventions, or unknown normalization.

@@ -29,7 +29,7 @@ class MeanRegressor:
         return np.repeat(self.mean_, len(x))
 
 
-def test_load_hourly_preserves_gaps_and_requires_four_samples(tmp_path):
+def test_load_hourly_preserves_gaps_and_requires_complete_hours(tmp_path):
     rows = []
     for minute in range(0, 60, 10):
         rows.append([f"2025-01-01 00:{minute:02d}:00", 5 + minute / 100, 0.4, 2])
@@ -107,13 +107,15 @@ def test_train_models_excludes_hours_ending_after_cutoff(tmp_path, monkeypatch):
     monkeypatch.setattr(train_module, "candidate_models", lambda: {"mean_only": MeanRegressor()})
     cutoff = (local_hours[1300].tz_localize("Asia/Almaty")).isoformat()
     artifact_dir = tmp_path / "results" / "artifacts"
-    metadata = train_module.train_models(raw_dir, artifact_dir, cutoff=cutoff)
+    metadata = train_module.train_models(raw_dir, artifact_dir, cutoff=cutoff,
+                                        holdout_start="2025-02-15T00:00:00+05:00",
+                                        validation_months=1, folds=1)
 
     for turbine in (1, 2):
         item = metadata["turbines"][str(turbine)]
         assert item["training_hours"] == 1300
         assert item["training_last_hour_utc"] == (local_hours[1299].tz_localize("Asia/Almaty").tz_convert("UTC")).isoformat().replace("+00:00", "Z")
-        assert item["chronological_split"]["holdout"]["first_hour_utc"] == (local_hours[1040].tz_localize("Asia/Almaty").tz_convert("UTC")).isoformat().replace("+00:00", "Z")
-        assert item["candidate_validation_metrics"]["mean_only"]["n"] == 195
+        assert item["chronological_split"]["holdout"]["first_hour_utc"] == (local_hours[1080].tz_localize("Asia/Almaty").tz_convert("UTC")).isoformat().replace("+00:00", "Z")
+        assert item["candidate_validation_metrics"]["mean_only"]["n"] == 744
         fitted = joblib.load(artifact_dir / item["artifact"])["model"]
         assert fitted.mean_ < 0.95

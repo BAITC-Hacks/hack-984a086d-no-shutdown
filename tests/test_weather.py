@@ -27,7 +27,7 @@ def payload(run="2026-01-31T06:00", hours=72):
     }
 
 
-def test_fetch_uses_latest_run_available_by_conservative_lag_and_returns_exact_horizon(tmp_path, monkeypatch):
+def test_fetch_uses_assumed_lag_and_explicitly_unverified_provenance(tmp_path, monkeypatch):
     calls = []
 
     def fake_request(params):
@@ -47,10 +47,37 @@ def test_fetch_uses_latest_run_available_by_conservative_lag_and_returns_exact_h
     assert frame.available_at.iloc[0] <= pd.Timestamp("2026-01-31T19:00:00Z")
     assert frame.source_hash.nunique() == 1
     assert frame.source.iloc[0] == weather.SOURCE
+    assert not frame.as_of_verified.any()
+    assert set(frame.availability_basis) == {"assumed_12h_lag"}
+    assert set(frame.provenance_status) == {"unverified_hindcast"}
     assert calls[0]["models"] == "ecmwf_ifs"
     assert calls[0]["run"] == "2026-01-31T06:00"
     assert calls[0]["wind_speed_unit"] == "ms"
     assert calls[0]["forecast_hours"] == 37
+
+
+def test_24_hours_reuses_verified_content_of_48_hour_cache_offline(tmp_path, monkeypatch):
+    monkeypatch.setattr(weather, "_request_json", lambda params: (payload(), "raw"))
+    full = weather.fetch_weather(1, "2026-02-01T00:00:00+05:00", 48, tmp_path)
+    def no_network(params):
+        raise AssertionError("24h subset must not make a network request")
+    monkeypatch.setattr(weather, "_request_json", no_network)
+    short = weather.fetch_weather(1, "2026-02-01T00:00:00+05:00", 24, tmp_path)
+    pd.testing.assert_frame_equal(short, full.iloc[:24].reset_index(drop=True))
+
+
+def test_cache_cannot_self_certify_historical_publication(tmp_path, monkeypatch):
+    monkeypatch.setattr(weather, "_request_json", lambda params: (payload(), "raw"))
+    weather.fetch_weather(1, "2026-02-01T00:00:00+05:00", 24, tmp_path)
+    path = next(tmp_path.rglob("*.json"))
+    cached = json.loads(path.read_text())
+    cached.update(as_of_verified=True, provenance_status="operational_archive",
+                  availability_basis="actual_publication")
+    path.write_text(json.dumps(cached))
+    frame = weather.fetch_weather(1, "2026-02-01T00:00:00+05:00", 24, tmp_path)
+    assert not frame.as_of_verified.any()
+    with pytest.raises(weather.WeatherUnavailableError, match="publication is unverified"):
+        weather.fetch_weather(1, "2026-02-01T00:00:00+05:00", 24, tmp_path, strict_as_of=True)
 
 
 def test_cache_keeps_source_hash_stable_across_fetch_times_and_refreshes(tmp_path, monkeypatch):

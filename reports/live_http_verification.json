@@ -1,0 +1,11 @@
+{
+  "tests_run": 6,
+  "failures": 0,
+  "errors": 0,
+  "passed": true,
+  "transport": "Actual HTTP Handler with in-memory connection; no socket bind",
+  "orchestration": "Real LiveForecastAgent with injected deterministic weather/model; actual service/chat/CSV routes",
+  "external_network_requested": false,
+  "live_weather_acquisition": "not_run",
+  "cli_help": "included in tests"
+}

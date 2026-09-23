@@ -1,5 +1,4 @@
-"""Chronological training, candidate selection, artifact writing and reports."""
-
+"""Reproducible rolling validation, untouched final holdout and production fit."""
 from __future__ import annotations
 
 import json
@@ -10,15 +9,10 @@ import joblib
 import numpy as np
 import pandas as pd
 import sklearn
+from threadpoolctl import threadpool_limits
 
 from .data import load_hourly, sha256_file
-from .model import (
-    FEATURE_SCHEMA,
-    MODEL_VERSION,
-    candidate_models,
-    make_features,
-    regression_metrics,
-)
+from .model import FEATURE_SCHEMA, MODEL_VERSION, candidate_models, make_features, regression_metrics
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -33,23 +27,20 @@ def _iso(value: pd.Timestamp) -> str:
 def _data_profile(hourly: pd.DataFrame, quality: dict[str, Any], timezone: str) -> dict[str, Any]:
     result: dict[str, Any] = {
         "timezone_assumption": timezone,
-        "hourly_interval_semantics": "UTC interval-start timestamp; mean available at interval end",
-        "minimum_samples_per_hour": 4,
-        "turbines": {},
+        "timestamp_semantics_assumption": hourly.attrs["timestamp_semantics_assumption"],
+        "hourly_interval_semantics": "UTC interval start; available at interval end (zero telemetry delay assumed)",
+        "minimum_samples_per_hour": hourly.attrs["minimum_samples_per_hour"], "turbines": {},
     }
     for turbine_id, group in hourly.groupby("turbine_id"):
-        times = group["timestamp"].sort_values()
+        times = group.timestamp.sort_values()
         gaps = times.diff().dropna().dt.total_seconds().div(3600)
+        span = int((times.max() - times.min()).total_seconds() / 3600) + 1
         result["turbines"][str(int(turbine_id))] = {
             **quality[str(int(turbine_id))],
-            "first_hour_utc": _iso(times.min()),
-            "last_hour_utc": _iso(times.max()),
-            "observed_hour_span": int((times.max() - times.min()).total_seconds() / 3600) + 1,
-            "missing_hours_inside_span": int((times.max() - times.min()).total_seconds() / 3600) + 1 - int(len(group)),
-            "first_local_timestamp": quality[str(int(turbine_id))]["first_valid_local_timestamp"],
-            "last_local_timestamp": quality[str(int(turbine_id))]["last_valid_local_timestamp"],
+            "first_hour_utc": _iso(times.min()), "last_hour_utc": _iso(times.max()),
+            "observed_hour_span": span, "missing_hours_inside_span": span - int(len(group)),
             "largest_gap_hours": int(gaps.max()) if len(gaps) else 0,
-            "median_samples_per_hour": float(group["sample_count"].median()),
+            "median_samples_per_hour": float(group.sample_count.median()),
             "wind_speed_range_m_s": [float(group.wind_speed.min()), float(group.wind_speed.max())],
             "temperature_range_c": [float(group.temperature.min()), float(group.temperature.max())],
             "normalized_power_range": [float(group.power.min()), float(group.power.max())],
@@ -57,176 +48,169 @@ def _data_profile(hourly: pd.DataFrame, quality: dict[str, Any], timezone: str) 
     return result
 
 
-def _fit_eval(name: str, x_train: pd.DataFrame, y_train: np.ndarray,
-              x_eval: pd.DataFrame) -> tuple[Any, np.ndarray]:
-    model = candidate_models()[name]
-    model.fit(x_train, y_train)
-    return model, np.clip(model.predict(x_eval), 0.0, 1.0)
+def _bounds(group: pd.DataFrame) -> dict[str, Any]:
+    return {"row_count": len(group), "first_hour_utc": _iso(group.timestamp.min()),
+            "last_hour_utc": _iso(group.timestamp.max())}
 
 
-def train_models(
-    data_dir: Path,
-    artifact_dir: Path,
-    cutoff: str = "2026-02-01T00:00:00+05:00",
-    timezone: str = "Asia/Almaty",
-) -> dict[str, Any]:
-    """Train each turbine independently with validation-only model selection.
+def train_models(data_dir: Path, artifact_dir: Path,
+                 cutoff: str = "2026-02-01T00:00:00+05:00", timezone: str = "Asia/Almaty", *,
+                 timestamp_semantics: str = "start", min_samples: int = 6,
+                 holdout_start: str | None = None, validation_months: int = 6,
+                 folds: int = 3, model_config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Select on rolling past-only folds; report a final month once, then refit.
 
-    Candidate choice uses the middle chronological validation block. The later
-    diagnostic block is scored once by models fitted only on data before it.
-    Production artifacts are refit on every eligible pre-cutoff hour afterward.
+    Default: Jul–Aug, Sep–Oct, Nov–Dec 2025 selection; January 2026 final
+    conditional holdout. Each fold refits on earlier data. Observed weather
+    is used, so this is not a measure of day-ahead weather forecast skill.
     """
-    data_dir, artifact_dir = Path(data_dir), Path(artifact_dir)
+    if folds < 1 or validation_months < folds or validation_months % folds:
+        raise ValueError("validation_months must be positive and divisible by folds")
     cutoff_ts = pd.Timestamp(cutoff)
     if cutoff_ts.tzinfo is None:
         raise ValueError("cutoff must be timezone-aware")
     cutoff_utc = cutoff_ts.tz_convert("UTC")
+    cutoff_local = cutoff_ts.tz_convert(timezone)
+    if holdout_start is None:
+        holdout_ts = cutoff_local.normalize().replace(day=1) - pd.DateOffset(months=1)
+    else:
+        holdout_ts = pd.Timestamp(holdout_start)
+        if holdout_ts.tzinfo is None:
+            raise ValueError("holdout_start must be timezone-aware")
+        holdout_ts = holdout_ts.tz_convert(timezone)
+    if holdout_ts >= cutoff_ts:
+        raise ValueError("holdout_start must precede cutoff")
+    validation_start = holdout_ts - pd.DateOffset(months=validation_months)
+    boundaries = [validation_start + pd.DateOffset(months=i * (validation_months // folds))
+                  for i in range(folds + 1)]
+    factories = lambda: candidate_models(model_config) if model_config else candidate_models()
+    names = list(factories())
+    artifact_dir, data_dir = Path(artifact_dir), Path(data_dir)
     reports_dir = artifact_dir.parent / "reports"
-
-    all_hourly = load_hourly(data_dir, timezone=timezone)
+    all_hourly = load_hourly(data_dir, timezone, timestamp_semantics=timestamp_semantics, min_samples=min_samples)
     quality = all_hourly.attrs["quality_report"]
-    profile = _data_profile(all_hourly, quality, timezone)
-    _write_json(reports_dir / "dataset_profile.json", profile)
-
-    # The right edge of an hourly bin is its availability time.
-    eligible = all_hourly.loc[all_hourly["timestamp"] + pd.Timedelta(hours=1) <= cutoff_utc].copy()
-    if eligible.empty:
-        raise ValueError("no complete hourly observations are available before cutoff")
-
+    _write_json(reports_dir / "dataset_profile.json", _data_profile(all_hourly, quality, timezone))
+    eligible = all_hourly.loc[all_hourly.available_at <= cutoff_utc].copy()
+    if set(eligible.turbine_id) != {1, 2}:
+        raise ValueError("both turbines need eligible complete hourly data before cutoff")
     turbine_metadata: dict[str, Any] = {}
     all_metrics: dict[str, Any] = {}
-    report_rows: list[str] = []
-    for turbine_id, group in eligible.groupby("turbine_id", sort=True):
-        group = group.sort_values("timestamp").reset_index(drop=True)
-        n = len(group)
-        train_end, validation_end = int(n * 0.65), int(n * 0.80)
-        if train_end < 300 or validation_end - train_end < 100 or n - validation_end < 100:
-            raise ValueError(f"not enough chronological data for turbine {turbine_id}: {n} hours")
-
-        feature_rows = make_features(group[["timestamp", "wind_speed", "temperature"]])
-        y = group["power"].to_numpy(dtype=float)
-        candidates: dict[str, Any] = {}
-        for name in candidate_models():
-            _, validation_pred = _fit_eval(name, feature_rows.iloc[:train_end], y[:train_end],
-                                           feature_rows.iloc[train_end:validation_end])
-            candidates[name] = {
-                "validation": regression_metrics(y[train_end:validation_end], validation_pred),
-                "validation_predictions": validation_pred,
+    comparison_rows: list[str] = []
+    tradeoffs: list[str] = []
+    saved_predictions: list[pd.DataFrame] = []
+    with threadpool_limits(limits=2):
+        for turbine_id, group in eligible.groupby("turbine_id", sort=True):
+            group = group.sort_values("timestamp").reset_index(drop=True)
+            features = make_features(group)
+            y = group.power.to_numpy(dtype=float)
+            fold_records, cv_predictions, cv_actuals = [], {name: [] for name in names}, []
+            for start, end in zip(boundaries[:-1], boundaries[1:]):
+                fit_mask = group.available_at <= start.tz_convert("UTC")
+                eval_mask = (group.timestamp >= start.tz_convert("UTC")) & (group.available_at <= end.tz_convert("UTC"))
+                if fit_mask.sum() < 300 or eval_mask.sum() < 30:
+                    raise ValueError(f"T{turbine_id}: insufficient data for fold {start}–{end}; adjust validation dates")
+                record: dict[str, Any] = {"fit": _bounds(group.loc[fit_mask]), "validation": _bounds(group.loc[eval_mask]), "candidates": {}}
+                cv_actuals.append(y[eval_mask])
+                for name, model in factories().items():
+                    model.fit(features.loc[fit_mask], y[fit_mask])
+                    predicted = np.clip(model.predict(features.loc[eval_mask]), 0, 1)
+                    cv_predictions[name].append(predicted)
+                    record["candidates"][name] = regression_metrics(y[eval_mask], predicted)
+                fold_records.append(record)
+            cv_y = np.concatenate(cv_actuals)
+            validation_metrics = {}
+            for name in names:
+                validation_metrics[name] = regression_metrics(cv_y, np.concatenate(cv_predictions[name]))
+                validation_metrics[name]["mean_fold_mae"] = float(np.mean([row["candidates"][name]["mae"] for row in fold_records]))
+            selected = min(names, key=lambda name: validation_metrics[name]["mean_fold_mae"])
+            residuals = np.abs(cv_y - np.concatenate(cv_predictions[selected]))
+            radius = float(np.quantile(residuals, 0.90, method="higher"))
+            fit_mask = group.available_at <= holdout_ts.tz_convert("UTC")
+            test_mask = group.timestamp >= holdout_ts.tz_convert("UTC")
+            if test_mask.sum() < 30:
+                raise ValueError(f"T{turbine_id}: fewer than 30 holdout hours")
+            # Score the already selected winner and fixed references; never select on holdout.
+            diagnostic_names = list(dict.fromkeys([selected] + [n for n in ("hist_gradient_boosting", "wind_bin_curve") if n in names]))
+            holdout_metrics = {}
+            diagnostic = group.loc[test_mask, ["turbine_id", "timestamp", "power"]].rename(columns={"power": "actual"}).copy()
+            for name in diagnostic_names:
+                model = factories()[name]
+                model.fit(features.loc[fit_mask], y[fit_mask])
+                predicted = np.clip(model.predict(features.loc[test_mask]), 0, 1)
+                holdout_metrics[name] = regression_metrics(y[test_mask], predicted)
+                diagnostic[name] = predicted
+            diagnostic["selected_candidate"] = selected
+            saved_predictions.append(diagnostic)
+            selected_test = holdout_metrics[selected]
+            production = factories()[selected]
+            production.fit(features, y)
+            artifact_dir.mkdir(parents=True, exist_ok=True)
+            filename = f"turbine_{int(turbine_id)}.joblib"
+            artifact_path = artifact_dir / filename
+            joblib.dump({"model": production, "model_version": MODEL_VERSION,
+                         "selected_candidate": selected, "feature_schema": FEATURE_SCHEMA,
+                         "interval_radius": radius, "interval_quantile": 0.90,
+                         "interval_calibration": "rolling validation absolute residuals; observed weather conditional"},
+                        artifact_path, compress=3)
+            turbine_metadata[str(int(turbine_id))] = {
+                "artifact": filename, "artifact_sha256": sha256_file(artifact_path),
+                "selected_candidate": selected, "training_hours": int(len(group)),
+                "training_first_hour_utc": _iso(group.timestamp.min()),
+                "training_last_hour_utc": _iso(group.timestamp.max()),
+                "chronological_split": {
+                    "fit": _bounds(group.loc[group.available_at <= boundaries[0].tz_convert("UTC")]),
+                    "validation": _bounds(group.loc[(group.timestamp >= boundaries[0].tz_convert("UTC")) & fit_mask]),
+                    "holdout": _bounds(group.loc[test_mask]),
+                    "selection_rule": "minimum mean rolling-fold MAE; final holdout not used for selection",
+                },
+                "rolling_validation_folds": fold_records,
+                "candidate_validation_metrics": validation_metrics,
+                "selection_justification": f"{selected}: lowest mean MAE across {folds} chronological folds, before final holdout.",
+                "validation": validation_metrics[selected], "holdout": selected_test,
+                "holdout_candidates": holdout_metrics,
+                "conditional_interval": {"quantile": 0.90, "symmetric_radius": radius,
+                                         "validation_empirical_coverage": float(np.mean(residuals <= radius)),
+                                         "holdout_empirical_coverage": float(np.mean(np.abs(diagnostic.actual - diagnostic[selected]) <= radius))},
+                "training_weather_ranges": {name: [float(group[name].min()), float(group[name].max())] for name in ("wind_speed", "temperature")},
             }
-        selected_name = min(candidates, key=lambda name: candidates[name]["validation"]["mae"])
-        validation_actual = y[train_end:validation_end]
-        validation_pred = candidates[selected_name]["validation_predictions"]
-        residual_radius = float(np.quantile(np.abs(validation_actual - validation_pred), 0.90, method="higher"))
-
-        # Untouched diagnostic holdout: refit selected and baseline models through validation only.
-        test_start = validation_end
-        test_metrics: dict[str, Any] = {}
-        test_predictions_by_model: dict[str, np.ndarray] = {}
-        for name in candidate_models():
-            _, test_pred = _fit_eval(name, feature_rows.iloc[:test_start], y[:test_start],
-                                     feature_rows.iloc[test_start:])
-            test_predictions_by_model[name] = test_pred
-            test_metrics[name] = regression_metrics(y[test_start:], test_pred)
-        chosen_test_metrics = test_metrics[selected_name]
-
-        production_model = candidate_models()[selected_name]
-        production_model.fit(feature_rows, y)
-        artifact_name = f"turbine_{int(turbine_id)}.joblib"
-        artifact_dir.mkdir(parents=True, exist_ok=True)
-        artifact_path = artifact_dir / artifact_name
-        joblib.dump({
-            "model": production_model,
-            "model_version": MODEL_VERSION,
-            "selected_candidate": selected_name,
-            "feature_schema": FEATURE_SCHEMA,
-            "interval_radius": residual_radius,
-            "interval_quantile": 0.90,
-            "interval_calibration": "absolute validation residuals; conditional on observed weather features",
-        }, artifact_path, compress=3)
-        turbine_metadata[str(int(turbine_id))] = {
-            "artifact": artifact_name,
-            "artifact_sha256": sha256_file(artifact_path),
-            "selected_candidate": selected_name,
-            "training_hours": int(n),
-            "training_first_hour_utc": _iso(group.timestamp.min()),
-            "training_last_hour_utc": _iso(group.timestamp.max()),
-            "chronological_split": {
-                "fit": {
-                    "row_count": int(train_end),
-                    "first_hour_utc": _iso(group.timestamp.iloc[0]),
-                    "last_hour_utc": _iso(group.timestamp.iloc[train_end - 1]),
-                },
-                "validation": {
-                    "row_count": int(validation_end - train_end),
-                    "first_hour_utc": _iso(group.timestamp.iloc[train_end]),
-                    "last_hour_utc": _iso(group.timestamp.iloc[validation_end - 1]),
-                },
-                "holdout": {
-                    "row_count": int(n - validation_end),
-                    "first_hour_utc": _iso(group.timestamp.iloc[validation_end]),
-                    "last_hour_utc": _iso(group.timestamp.iloc[n - 1]),
-                },
-                "selection_rule": "minimum validation MAE; holdout metrics are diagnostic only",
-            },
-            "candidate_validation_metrics": {
-                name: item["validation"] for name, item in candidates.items()
-            },
-            "selection_justification": (
-                f"Selected {selected_name}: it had the lowest MAE on the chronological validation block; "
-                "the later holdout was not used for selection."
-            ),
-            "validation": candidates[selected_name]["validation"],
-            "holdout": chosen_test_metrics,
-            "holdout_candidates": test_metrics,
-            "conditional_interval": {
-                "quantile": 0.90,
-                "symmetric_radius": residual_radius,
-                "validation_empirical_coverage": float(np.mean(np.abs(validation_actual - validation_pred) <= residual_radius)),
-            },
-        }
-        all_metrics[str(int(turbine_id))] = {
-            "validation": candidates[selected_name]["validation"],
-            "holdout": chosen_test_metrics,
-            "holdout_candidates": test_metrics,
-        }
-        report_rows.append(
-            f"| {int(turbine_id)} | {n:,} | {selected_name} | {candidates[selected_name]['validation']['mae']:.4f} | "
-            f"{chosen_test_metrics['mae']:.4f} | {chosen_test_metrics['rmse']:.4f} | {chosen_test_metrics['r2']:.3f} |"
-        )
-
+            all_metrics[str(int(turbine_id))] = {"validation": validation_metrics[selected], "holdout": selected_test, "holdout_candidates": holdout_metrics}
+            baseline = holdout_metrics.get("hist_gradient_boosting", selected_test)
+            if selected_test["rmse"] > baseline["rmse"]:
+                tradeoffs.append(f"T{int(turbine_id)}: MAE {selected_test['mae']:.5f} против {baseline['mae']:.5f} у исходного HGB; RMSE немного хуже ({selected_test['rmse']:.5f} против {baseline['rmse']:.5f}). Критерием выбора был MAE; улучшение по всем метрикам не заявляется.")
+            comparison_rows.append(f"| T{int(turbine_id)} | {len(group):,} | {selected} | {validation_metrics[selected]['mean_fold_mae']:.5f} | {selected_test['mae']:.5f} | {baseline['mae']:.5f} | {selected_test['rmse']:.5f} |")
+    pd.concat(saved_predictions).to_csv(reports_dir / "conditional_holdout_predictions.csv", index=False)
     metadata: dict[str, Any] = {
-        "model_version": MODEL_VERSION,
-        "model_available_at": _iso(cutoff_utc),
-        "model_available_at_local": cutoff_ts.isoformat(),
-        "timezone": timezone,
-        "feature_schema": FEATURE_SCHEMA,
-        "input_files": ["turbine_1.csv", "turbine_2.csv"],
-        "library_versions": {
-            "pandas": pd.__version__, "numpy": np.__version__, "scikit_learn": sklearn.__version__,
-            "joblib": joblib.__version__,
-        },
+        "model_version": MODEL_VERSION, "model_available_at": _iso(cutoff_utc),
+        "model_available_at_local": cutoff_ts.isoformat(), "timezone": timezone,
+        "feature_schema": FEATURE_SCHEMA, "input_files": ["turbine_1.csv", "turbine_2.csv"],
+        "training_config": {"timestamp_semantics": timestamp_semantics, "min_samples": min_samples,
+                            "validation_months": validation_months, "folds": folds,
+                            "holdout_start": holdout_ts.isoformat(), "model_config": model_config or {}},
+        "library_versions": {"pandas": pd.__version__, "numpy": np.__version__, "scikit_learn": sklearn.__version__, "joblib": joblib.__version__},
         "input_hashes": {key: row["raw_sha256"] for key, row in quality.items()},
-        "turbines": turbine_metadata,
-        "metrics": all_metrics,
+        "turbines": turbine_metadata, "metrics": all_metrics,
         "limitations": [
-            "February 2026 turbine observations are absent; no February actual-power score is available.",
-            "Validation and holdout use observed wind and temperature, so they are conditional weather-to-power diagnostics, not day-ahead forecast skill.",
-            "Prediction intervals calibrate power-model residuals conditional on supplied weather and exclude weather-forecast uncertainty.",
-            "Input timestamps were treated as Asia/Almaty local time; normalized output is not kW or kWh.",
+            "No February 2026 actual turbine power was supplied; February accuracy cannot be measured.",
+            "Scores use observed weather, not forecast weather; they are conditional power-model diagnostics, not 24–48 h forecast skill.",
+            "Residual bands exclude weather uncertainty and have no guaranteed coverage for operational forecasts.",
+            f"CSV timezone={timezone}, timestamp={timestamp_semantics}, telemetry delay=0 are explicit unconfirmed assumptions.",
+            "Power normalization formula and rated capacities are unknown; predictions are dimensionless, not MW/MWh.",
         ],
     }
     _write_json(artifact_dir / "metadata.json", metadata)
-    report = [
-        "# Wind power model training report", "",
-        f"Model version: `{MODEL_VERSION}`. Frozen availability cutoff: `{cutoff_ts.isoformat()}` ({_iso(cutoff_utc)} UTC).",
-        "", "## Chronological diagnostics", "",
-        "Candidates were selected using a 65%/15% chronological fit/validation split. The final 20% was held out from selection; diagnostic models were fitted only on earlier observations. Production artifacts were then refit on all eligible hours before the cutoff.",
-        "", "| Turbine | Eligible hours | Selected model | Validation MAE | Holdout MAE | Holdout RMSE | Holdout R² |",
-        "|---:|---:|---|---:|---:|---:|---:|", *report_rows,
-        "", "These scores use observed wind speed and temperature. They measure the conditional power curve/model only, not 24–48-hour forecast accuracy. February actuals are unavailable.",
-        "", "## Data quality", "", "See `dataset_profile.json` for raw-row counts, invalid rows, duplicates, undercovered hours, gaps, value ranges, and source hashes.",
-        "", "## Interval meaning", "", "Lower and upper bounds use the 90th percentile absolute residual from the pre-holdout validation block, applied symmetrically and clipped to normalized power [0, 1]. They are conditional on the weather features supplied to the model and do not include uncertainty in the weather forecast.",
-        "", "## Reproducibility", "", "Training uses deterministic scikit-learn estimators with fixed random state, per-source SHA-256 hashes, and a separate artifact for each turbine. The input data ends at 2026-01-31 23:50 local time; complete hourly means are required before the cutoff.", "",
-    ]
-    (reports_dir / "training_report.md").write_text("\n".join(report), encoding="utf-8")
+    report = ["# Обучение модели мощности", "",
+              f"Версия `{MODEL_VERSION}`. Данные ограничены `{cutoff_ts.isoformat()}`. Измерений в час: минимум {min_samples}/6.", "",
+              "## Проверка без перемешивания времени", "",
+              f"Выбор модели: {folds} последовательных окон между {validation_start.date()} и {holdout_ts.date()}. Каждое окно использует только предшествующие наблюдения. Критерий — среднее MAE окон.", "",
+              f"Финальная проверка: {holdout_ts.date()} — {cutoff_local.date()} (правая граница исключена). Этот период не используется для выбора модели. После оценки выбранная модель переобучена на всех доступных данных для рабочего прогноза.", "",
+              "| Турбина | Часов обучения | Выбранная модель | CV MAE | Holdout MAE | Исходный HGB MAE | Holdout RMSE |",
+              "|---|---:|---|---:|---:|---:|---:|", *comparison_rows, "",
+              "MAE/RMSE — в единицах нормализованной мощности. Это ошибки при известных фактических ветре и температуре; они НЕ измеряют точность прогноза на 24–48 часов. Оба алгоритма сравниваются на одинаковых полных часах и временных границах.", "",
+              *tradeoffs, "",
+              "Все кандидаты и метрики окон: `artifacts/metadata.json`. Индивидуальные прогнозы: `reports/conditional_holdout_predictions.csv`. Качество CSV: `reports/dataset_profile.json`.", "",
+              "## Интервал и ограничения", "",
+              "Полоса — 90-й перцентиль абсолютных ошибок выбранной модели на скользящих окнах; это условный разброс ошибки мощности при заданной погоде. Он не включает неопределённость будущей погоды и не гарантирует 90% покрытия будущих наблюдений.", "",
+              *[f"- {item}" for item in metadata["limitations"]], "",
+              "Настройка и воспроизведение: `docs/TUNING.md`. random_state=17 и SHA-256 исходных данных/артефактов записаны в метаданных."]
+    (reports_dir / "training_report.md").write_text("\n".join(report) + "\n", encoding="utf-8")
     return metadata

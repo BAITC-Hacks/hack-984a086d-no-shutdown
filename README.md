@@ -1,137 +1,107 @@
-# No Shutdown: wind power forecasting agent
+# Wind Agent — прогноз выработки двух турбин
 
-Python backend for the HackAlem AI wind power forecasting case. It trains a separate model for each turbine, retrieves archived weather forecast runs, produces hourly forecasts of normalized power for 24–48 hours, and records agent decisions for audit and recalculation.
+[**Презентация проекта**](https://canva.link/istoddntna5ut7e)
 
-**Current interface:** the backend and its interactive API at `http://127.0.0.1:8000/docs`. The existing `index.html`, `styles.css`, and `app.js` remain a **synthetic-data prototype** and are not connected to the backend's ML forecasts. See [frontend instructions](docs/FRONTEND_README.md).
+Локальное приложение объединяет подготовку телеметрии, ML-модель мощности, погодный API, проверяемый цикл агента и веб-панель. Оно формирует почасовой прогноз на 24 или 48 часов, сохраняет источник и время погодного выпуска, показывает предупреждения и выгружает результаты в CSV. Приложение рассчитано на демонстрацию и анализ; февральский прогноз пока нельзя считать подтверждённым оперативным прогнозом из-за ограничений архивной погоды и отсутствия фактической мощности за февраль.
 
-**Scope of the data:** the supplied CSVs contain 291,859 ten-minute observations ending on January 31, 2026. Despite their filenames, they contain no February 2026 ground truth. The project can generate February forecasts, but cannot calculate February accuracy without actual February observations. Validation with observed historical weather measures conditional weather-to-power error, not operational day-ahead forecast error.
+## Быстрый запуск
 
-## Quick start
+На компьютере жюри нужны Python 3.12 или новее (добавленный в PATH) и интернет для первой установки зависимостей и свежего прогноза. Проверьте в PowerShell командой `python --version`. Node.js не требуется.
 
-From the repository root on Windows, run in PowerShell:
+**Windows (PowerShell):** откройте эту папку в VS Code и выполните:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\start.ps1
+.\start.ps1
 ```
 
-The startup script creates a local environment and installs pinned dependencies. Then open [the interactive API](http://127.0.0.1:8000/docs). The server binds to localhost by default. Source CSVs are expected in `data/raw/`; see the repository's data instructions before training if they are absent.
+**macOS / Linux:**
 
-Manual setup with Python 3.12+:
-
-```bash
-python -m venv .venv
-# Activate the environment: .venv\Scripts\activate on Windows,
-# or source .venv/bin/activate on Linux/macOS.
-python -m pip install -r requirements.lock.txt
-python -m windagent train
-python -m windagent serve
+```sh
+bash start.sh
 ```
 
-Data, model artifacts, and state default to the project directory. Set `WINDAGENT_HOME` or pass `--home PATH` to select another directory.
+Скрипт создаёт `.venv` в папке проекта, устанавливает закреплённые зависимости из `requirements.lock.txt` и запускает локальный сервер. Откройте <http://127.0.0.1:8000>. Если порт занят, в PowerShell выполните `.\start.ps1 -Port 8001`; откройте <http://127.0.0.1:8001>. Остановка — Ctrl+C.
 
-## Reproduce forecasts and tests
+Модели уже входят в `artifacts/`; первый запуск не требует повторного обучения. Если предыдущая версия сервера запущена, остановите её перед запуском этой папки.
 
-Run these commands from the repository root after placing the supplied CSVs in `data/raw/`:
+Опциональный режим FastAPI с интерактивной схемой API доступен при установленной web-группе. Для обычного запуска на localhost он не требуется:
 
-```bash
-python -m windagent train --cutoff 2026-02-01T00:00:00+05:00
-python -m windagent forecast --origin 2026-02-01T00:00:00+05:00 --horizon 48 --output reports/first_forecast.json --csv reports/first_forecast.csv
-python -m windagent replay --start 2026-02-01T00:00:00+05:00 --days 28
-python -m windagent backtest --start 2026-01-01T00:00:00+05:00 --days 7
-python -m pytest -q
+```powershell
+python -m pip install -e ".[web]"
+python -m windagent serve --fastapi
 ```
 
-The model cutoff excludes observations at and after midnight on February 1, local time. The February replay issues a new 48-hour forecast for each of 28 daily origins; forecast windows overlap. The February 28 origin reaches into March 1, so any February-only evaluation must filter target timestamps and report lead times separately.
+Документация API будет по адресу <http://127.0.0.1:8000/docs>. По умолчанию приложение использует стандартный HTTP-сервер Python.
 
-The brief also asks for an origin on January 31. That origin requires a **separate model** trained with a cutoff no later than `2026-01-31T00:00:00+05:00` and a separate artifact directory. A model trained through the end of January 31 would leak future observations into that forecast. The 28-day February replay above does not include the January 31 origin.
+Для быстрого просмотра интерфейса без установки Python дважды щёлкните `preview.html`. Этот режим показывает уже сохранённые архивные результаты; для live-погоды запустите сервер описанным выше способом.
 
-To check for revised input at one origin or poll automatically:
+## Что показать на демонстрации
 
-```bash
-python -m windagent forecast --origin 2026-02-01T00:00:00+05:00 --refresh
-python -m windagent watch --interval 300
-python -m windagent watch --origin 2026-02-01T00:00:00+05:00 --interval 300
+1. На панели переключите T1/T2, исторический режим и горизонт 24/48 часов. Наведите курсор на график, выберите точку и скачайте CSV.
+2. Откройте режим **«Сейчас · live»**. Он запрашивает погоду для следующего полного часа и использует ту же обученную модель. Успешный свежий запрос требует доступного Open-Meteo API и интернета; при ошибке приложение показывает ошибку, а не придумывает погоду.
+3. Спросите локального аналитика: «Сравни T1 и T2», «Найди лучшие три часа» или «Покажи резкие перепады». Ответ вычисляется из прогноза текущего запуска.
+4. Покажите `reports/february_forecasts.csv` и `reports/february_replay.json`: это сохранённая реконструкция по 28 историческим срезам и 2 688 точкам, а не февральская оценка по измеренным фактам.
+
+## Архитектура и технологии
+
+```text
+10-минутные CSV ──> проверка времени и качества ──> почасовые признаки
+                                                     │
+ECMWF / Open-Meteo ──> проверка доступности/кэша ────┤
+                                                     v
+                                      модели мощности T1 и T2
+                                                     │
+                                      агент / сервис / журнал SQLite
+                                                     │
+                                  HTTP API ──> HTML, CSS, JavaScript
 ```
 
-`--refresh` rechecks the input; unchanged content can reuse a previous prediction. `watch` polls for updates. Weather changes can trigger recalculation; retraining the model remains an explicit operation.
+- **Python 3, pandas, NumPy, scikit-learn, joblib**: очистка и агрегация телеметрии, временные признаки, обучение и инференс двух моделей HistGradientBoosting. Хеши входов и артефактов, настройки и метрики записаны в `artifacts/metadata.json`.
+- **ECMWF IFS через Open-Meteo**: исторические одиночные погодные выпуски для реконструкции и запрос актуального прогноза для режима live. Погодные данные несут выпуск, время получения, координаты и хеш ответа.
+- **Агент и сервис на Python**: проверяют горизонт и временной срез, получают погоду, вызывают модель, формируют предупреждения и пишут результаты/аудит в SQLite. Повторный запуск переиспользует неизменённые входы; изменившиеся входы запускают расчёт заново.
+- **HTML, CSS, JavaScript и SVG**: адаптивная панель и график без npm-сборки и сторонних CDN.
+- **Локальный чат** — аналитик на правилах, который использует контекст прогноза. Он не является LLM. Опциональный адаптер OpenAI Responses API включается через `.env`; ключ хранится только на сервере. Без ключа работает локальный аналитик.
+- **HTTP**: компактный сервер Python включён по умолчанию; FastAPI/Uvicorn и `/docs` — дополнительный вариант.
 
-## Forecast pipeline
+## Данные и модель
 
-1. Load the two turbine CSVs and convert local `Asia/Almaty` timestamps to UTC. Check missing and duplicate observations. Aggregate ten-minute telemetry to hours only when at least four valid, distinct samples exist.
-2. Select an archived weather **forecast run** available at the requested origin, rather than later observed weather. Cache the raw provider response and its provenance.
-3. Prepare hourly features and run the turbine-specific model. A learned wind-speed curve and gradient-boosted trees compete on chronological validation data; a later, untouched period is used to measure the selected model.
-4. Validate forecast values and write hourly predictions, source metadata, and audit events. The agent decides whether to reuse, recalculate, or report failure when inputs change.
+Модели обучены на поставленных CSV с телеметрией T1/T2. Их контрольные суммы и качество данных приведены в `reports/dataset_profile.json`; конфигурация отбора и артефактные хеши — в `artifacts/metadata.json`. Используются только часы с шестью из шести десятиминутных измерений. Пропуски не превращаются в нулевую выработку. Данные доходят до 31 января 2026; фактических февральских измерений в наборе нет.
 
-This is a policy-driven agent: it orchestrates data retrieval, prediction, validation, and refresh without an LLM API key. The project does **not** claim that a language model predicts turbine output.
+Кандидаты сравнивались на трёх последовательных временных окнах, январь оставался финальным holdout, а после оценки выбранная модель была переобучена на данных до 1 февраля. На январском holdout (744 часа на турбину), при подаче **фактического ветра и температуры**, получена MAE 0.02187 для T1 и 0.02404 для T2 в единицах нормализованной мощности. Это оценка условной зависимости мощности от известной погоды, а не точность прогноза на 24/48 часов. У T2 RMSE немного выше базового алгоритма; отчёт не заявляет улучшение каждой метрики. См. [`reports/training_report.md`](reports/training_report.md) и [`reports/model_revision_audit.json`](reports/model_revision_audit.json).
 
-### Time and weather availability
+Архивная погодная реконструкция покрывает 28 февральских срезов. Провайдер помечает исторические ECMWF данные как hindcast; предполагаемая задержка публикации 12 часов не подтверждена первичным журналом доступности. Поэтому для сохранённых исторических расчётов `as_of_verified=false`: их нельзя выдавать за доказанный оперативный backtest. Свежий live-режим использует внешний API в момент запуска; отчёты интеграционных тестов с контролируемой фикстурой сами по себе не доказывают успешный сетевой вызов.
 
-The input CSV does not specify its timezone or interval convention. The implementation **assumes** `Asia/Almaty` and treats a timestamp as the start of its ten-minute interval, available only at the interval's end. Missing hours are not filled with later observations.
+Номинальная мощность **2,5 МВт на турбину подтверждена пользователем проекта**. В наборе данных не найдена документация формулы нормализации; отображение нормализованной мощности в долю номинальной мощности поэтому является явным допущением. Значения MW/MWh в live-ответе помечаются как расчётные на этом допущении, а не как независимое измерение. Для этой демонстрационной сборки включён отдельный исследовательский cut-in/rated/cut-out сценарий. Его пороги остаются предположениями, а не спецификациями турбин; они меняют постобработку прогноза и не входят в январские метрики условной модели.
 
-Weather is obtained from [Open-Meteo Single Runs](https://open-meteo.com/en/docs/single-runs-api) using a specified ECMWF initialization time. The implementation assumes a conservative 12-hour publication delay: a run is eligible only if its initialization time plus that delay is no later than the forecast origin. This is an availability rule used by the project, **not verified evidence of the provider's exact publication time** for each historical run. See [weather details](docs/WEATHER.md).
+Часовой пояс `Asia/Almaty`, семантика timestamp `start` и нулевая задержка телеметрии — зафиксированные допущения, подлежащие сверке с владельцем данных.
 
-Prediction intervals are based on historical conditional residuals. They do not fully represent uncertainty in future weather. Model metadata records input hashes, feature schema, split dates, and artifact hashes.
+## Воспроизведение и проверка
 
-## Reported results
+Для повторного обучения с тем же срезом и временным протоколом:
 
-The repository reports a completed February replay for **28/28 origins** and **2,688 turbine-hour forecast rows** (28 origins × 48 hours × 2 turbines). This counts predictions; it is **not a February accuracy score**.
-
-A separate model, frozen before the January diagnostic, was tested on seven January origins with archived forecast weather. All 672 forecast rows were matched to actuals. The reported mean absolute errors (MAE) are in normalized power units:
-
-| Turbine | Lead time | Model MAE | Persistence MAE |
-| --- | ---: | ---: | ---: |
-| 1 | 0–23 hours | 0.1398 | 0.2850 |
-| 1 | 24–47 hours | 0.1355 | 0.2292 |
-| 2 | 0–23 hours | 0.1389 | 0.2994 |
-| 2 | 24–47 hours | 0.1333 | 0.2144 |
-
-This is a small diagnostic with overlapping origins, not a February or seasonal score. No tuning was performed on this diagnostic. See `reports/january_backtest.json` for run provenance and coverage, and `reports/january_backtest_predictions.csv` for individual predictions and the persistence baseline. A mismatch between grid-forecast wind and site wind remains an accuracy limitation.
-
-## API and output files
-
-Useful endpoints are `GET /health`, `GET /model`, `POST /forecasts`, `GET /forecasts`, `GET /forecasts/{id}`, `GET /forecasts/{id}/csv`, and `POST /replay`. The [interactive API](http://127.0.0.1:8000/docs) documents their request and response schemas.
-
-Example forecast request body:
-
-```json
-{"origin": "2026-02-01T00:00:00+05:00", "horizon": 48, "refresh": false}
+```powershell
+python -m windagent train --cutoff 2026-02-01T00:00:00+05:00 --timezone Asia/Almaty --timestamp-semantics start --min-samples 6 --validation-months 6 --folds 3
 ```
 
-The forecast detail includes an audit trail. The dashboard contract is `GET /api/forecast?turbine_id=T1&as_of_date=2026-02-01&horizon_hours=48`; it returns `forecast` points containing `predicted_power`, `wind_speed`, and `temperature`, plus warnings and provenance. `as_of_date` denotes local midnight in `Asia/Almaty`; returned point timestamps are UTC. Connecting the current UI requires replacing its mock data generator **and** its unit labels.
+Чтобы создать свежий погодный прогноз на 48 часов и сохранить JSON/CSV:
 
-| Path | Contents |
-| --- | --- |
-| `data/raw/` | Supplied CSVs under stable names |
-| `data/weather/` | Cached archived weather responses and provenance |
-| `artifacts/` | Turbine models and training metadata |
-| `reports/` | Data profile, validation, replay, and hourly forecast exports |
-| `state/` | Local SQLite run and audit history; excluded from Git |
-| `docs/` | Requirements, weather method, frontend notes, and limitations |
+```powershell
+python -m windagent live --horizon 48 --refresh --output reports/live_forecast.json --csv reports/live_forecast.csv
+```
 
-## Physical interpretation and power curves
+Для запуска автоматизированных проверок из корня проекта (без внешней сети):
 
-The target is **normalized active power**, not MW or MWh. The output is bounded to `[0, 1]` according to the project's data interpretation; confirm the observed training range per turbine before treating these bounds as verified properties of the source CSVs. The farm-level equal-weight mean is a proxy because turbine rated capacities are unavailable. The prototype UI's 2.5/3.2 MW capacities are synthetic and must not be applied to model predictions. With verified rated capacities, an hourly mean normalized power can be converted to energy by multiplying by rated MW and one hour.
+```powershell
+python -m unittest discover -s tests -v
+python scripts/verify_weather.py
+python scripts/verify_service.py --real
+python scripts/verify_delivery.py
+python scripts/verify_live.py
+python scripts/verify_live_http.py
+python scripts/verify_chat_tools.py
+python scripts/verify_model_revision.py
+```
 
-`power_curves_turbines.png` visualizes observed wind speed against normalized power for the two turbines. A curve used for training, a physics feature, or model validation must be fitted **only on observations available before the forecast cutoff**. February targets must never influence such a curve or its thresholds.
+Проверки охватывают протокол временной валидации, обработку данных, API-маршруты и сервис с реальными моделями, кэш/происхождение погоды и правила локального чата. Перед публичной демонстрацией запускайте live-команду отдельно: offline-тесты используют контролируемые входы и не заменяют фактический сетевой запрос. Результаты сохранены в `reports/`; там явно отмечены проверки, которые не выполнялись в изолированной среде.
 
-The physics module `src/physics.py` is described as providing `apply_physics_sanity_check()` and `calculate_physics_power_baseline()`. The first checks or constrains implausible predictions; the second provides a physics-inspired baseline that an ML model may use as a feature. Verify the actual function signatures and whether the training pipeline calls them before claiming the hybrid model is integrated.
-
-The proposed `vin = 2.5 m/s` and `vrated = 10.5 m/s` should be documented as **empirical estimates** only if they were derived from pre-February data for the relevant turbine. `vout = 25 m/s` should be labeled a **design assumption** unless supported by turbine documentation or data. A wind forecast at the grid's reference height can differ from hub-height wind; hard-zero rules at these thresholds can therefore remove plausible production. Keep the estimated bounds and warnings distinct from verified equipment specifications.
-
-## Limitations and next steps
-
-1. **No February actuals:** February MAE/RMSE cannot be reported until observations for that period are supplied.
-2. **Weather-to-site mismatch:** the grid wind height and turbine hub height require confirmation; calibrate grid forecasts to site observations using only pretest data.
-3. **Historical run availability:** the 12-hour publication delay is an assumption; verify it against the provider and the required issuance schedule.
-4. **Unknown operating conditions:** curtailment, outages, turbine model, and rated capacities are not supplied, so causes of low power cannot be identified from wind alone.
-5. **Integration:** validate the physics module against an actual ML forecast and connect the dashboard to the backend before describing those paths as end-to-end features.
-
-Load only trusted local model artifacts. The API is intended for local hackathon use; external deployment would need authentication, TLS, and request limits. A `Dockerfile` is included for packaging; live deployment is not required for local reproduction.
-
-## References
-
-- [Case requirements](docs/REQUIREMENTS.md) and [implementation plan](docs/IMPLEMENTATION_PLAN.md)
-- [Open-Meteo Single Runs API](https://open-meteo.com/en/docs/single-runs-api)
-- [scikit-learn histogram gradient boosting](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingRegressor.html)
-- [FastAPI deployment guidance](https://fastapi.tiangolo.com/deployment/manually/)
-
+Полезные материалы: [инструкция для первого запуска](START_HERE.md), [карта критериев и сценарий защиты](docs/CRITERIA.md), [аудит премиальной сборки](docs/PREMIUM_REVIEW.md), [модель и временная валидация](docs/TUNING.md), [погода и ограничения архива](docs/WEATHER.md), [live-режим](docs/LIVE.md).

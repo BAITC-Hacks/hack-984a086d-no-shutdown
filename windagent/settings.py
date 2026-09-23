@@ -7,7 +7,7 @@ from pathlib import Path
 def load_env(path: Path):
     if not path.exists():
         return
-    allowed = {"WINDAGENT_CHAT_PROVIDER", "OPENAI_API_KEY", "OPENAI_MODEL", "WINDAGENT_STRICT_AS_OF"}
+    allowed = {"WINDAGENT_CHAT_PROVIDER", "OPENAI_API_KEY", "OPENAI_MODEL", "WINDAGENT_STRICT_AS_OF", "WINDAGENT_LIVE_POLL"}
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:

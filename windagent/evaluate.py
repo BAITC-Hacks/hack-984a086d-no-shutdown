@@ -1,4 +1,4 @@
-"""Operational rolling-origin backtest using archived weather forecast runs."""
+"""Rolling-origin weather replay; provenance status travels with every score."""
 
 from __future__ import annotations
 
@@ -25,8 +25,9 @@ def run_january_backtest(
 ) -> dict[str, Any]:
     """Train at Jan 1, replay consecutive daily 48h origins, and score actuals.
 
-    This is a genuine weather-forecast diagnostic: every power prediction uses
-    an individual archived ECMWF run that passed the weather layer's as-of gate.
+    Every power prediction uses an individual archived ECMWF run that passed
+    the configured date gate. A date gate alone does not prove that hindcasts
+    were operationally published in the past; provenance remains unverified.
     Failures remain visible in the output and missing actual hours are excluded.
     Artifacts/reports are kept under ``artifact_workspace``; production artifacts
     and the primary conditional model report are untouched.
@@ -73,6 +74,8 @@ def run_january_backtest(
                 origin_record["turbines"][str(turbine_id)] = {
                     "status": "scored", "weather_run_initialized_at": weather.initialized_at.iloc[0].isoformat(),
                     "weather_source_hash": str(weather.source_hash.iloc[0]),
+                    "as_of_verified": bool(weather["as_of_verified"].iloc[0]) if "as_of_verified" in weather else False,
+                    "provenance_status": str(weather["provenance_status"].iloc[0]) if "provenance_status" in weather else "unverified_hindcast",
                     "requested_weather_hours": 48,
                     "matched_actual_hours": int(len(joined)),
                     "missing_actual_hours": int(48 - len(joined)),
@@ -126,7 +129,9 @@ def run_january_backtest(
             "persistence_stale_age_hours", "initialized_at", "weather_source_hash",
         ]].to_csv(report_path.with_name(predictions_filename), index=False)
     report: dict[str, Any] = {
-        "diagnostic": "archived_forecast_weather_rolling_origin",
+        "diagnostic": "unverified_hindcast_weather_rolling_origin",
+        "as_of_verified": False,
+        "provenance_status": "unverified_hindcast",
         "model_available_at": metadata["model_available_at"],
         "training_cutoff_local": cutoff,
         "training_artifacts": "artifact_workspace/artifacts (separate from production)",
@@ -147,11 +152,11 @@ def run_january_backtest(
         "row_count": int(len(all_rows)),
         "predictions_csv": predictions_filename if not all_rows.empty else None,
         "caveats": [
-            "Only archived weather forecast runs available as of each origin are scored; no reanalysis is substituted.",
+            "Cached provider data is labeled hindcast. Initialization plus assumed latency passes the configured date gate, but historical operational publication is not verified; this is not proven leakage-free day-ahead skill.",
             "The Jan 1 00:00 local model cutoff precedes every scored origin; observations after the cutoff are excluded from training.",
             "Origins overlap, so the lead-bucket sample rows are correlated and are not independent trials.",
             "Persistence baseline carries forward the latest complete hourly power value available at each origin; stale observation time and age are included per prediction.",
-            "This is a seven-origin January diagnostic and should not be interpreted as a stable seasonal estimate.",
+            f"This is a {origin_count}-origin January diagnostic and should not be interpreted as a stable seasonal estimate.",
             "Power is normalized; the farm equal-weight mean is a proxy, not capacity-weighted generation.",
         ],
     }

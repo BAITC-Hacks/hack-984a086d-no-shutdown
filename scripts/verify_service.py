@@ -140,7 +140,9 @@ class ServiceChecks(unittest.TestCase):
         self.assertIn('0.1234', ask('Какая точность?')['reply'])
         self.assertIn('не точность прогноза на 48 часов', ask('Какая точность?')['reply'])
         self.assertIn('as_of_verified=false', ask('Проверь утечку')['reply'])
-        self.assertIn('Чат сам не изменяет', ask('Переобучи модель')['reply'])
+        training_reply = ask('Переобучи модель')['reply']
+        self.assertRegex(training_reply, r'Чат (?:сам )?не (?:меняет|изменяет)')
+        self.assertIn('артефакты', training_reply)
         self.assertIn('локальный аналитик', ask('Расскажи рецепт пиццы')['reply'])
         json.dumps(summary, allow_nan=False)
 

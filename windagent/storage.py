@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -20,12 +21,19 @@ class ForecastStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
 
-    def _connect(self) -> sqlite3.Connection:
+    @contextmanager
+    def _connect(self):
         conn = sqlite3.connect(self.path, timeout=30, isolation_level="IMMEDIATE")
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA busy_timeout=30000")
         conn.execute("PRAGMA foreign_keys=ON")
-        return conn
+        try:
+            with conn:
+                yield conn
+        finally:
+            # sqlite's connection context manager commits/rolls back but does
+            # not close. Always release handles for long-lived API/watch loops.
+            conn.close()
 
     def _initialize(self) -> None:
         with self._connect() as conn:
@@ -72,11 +80,16 @@ class ForecastStore:
                 (forecast_id, _now(), stage, status, json.dumps(detail, sort_keys=True, default=str)),
             )
 
-    def finish(self, forecast_id: int, payload: dict, input_hash: str, model_hash: str) -> None:
+    def finish(self, forecast_id: int, payload: dict, input_hash: str, model_hash: str,
+               *, stage: str = "persist", detail: Any = None) -> None:
         with self._connect() as conn:
             conn.execute(
                 "UPDATE forecasts SET status='succeeded', input_hash=?, model_hash=?, payload_json=?, error=NULL, updated_at=? WHERE id=?",
-                (input_hash, model_hash, json.dumps(payload, sort_keys=True, default=str), _now(), forecast_id),
+                (input_hash, model_hash, json.dumps(payload, sort_keys=True, default=str, allow_nan=False), _now(), forecast_id),
+            )
+            conn.execute(
+                "INSERT INTO audit_events(forecast_id,occurred_at,stage,status,detail_json) VALUES(?,?,?,?,?)",
+                (forecast_id, _now(), stage, "succeeded", json.dumps(detail or {"forecast_id": forecast_id}, sort_keys=True)),
             )
 
     def fail(self, forecast_id: int, error: str) -> None:

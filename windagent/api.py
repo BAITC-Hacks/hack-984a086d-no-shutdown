@@ -1,173 +1,146 @@
-"""HTTP API for forecast creation, inspection, export, and replay."""
+"""FastAPI routes. The same service layer is used by the portable HTTP server."""
 from __future__ import annotations
 
-import csv
-import io
-import os
-from datetime import datetime, timezone
-from functools import lru_cache
-from pathlib import Path
+import asyncio
+import threading
+from contextlib import asynccontextmanager
 from typing import Literal
-from zoneinfo import ZoneInfo
-
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
+from . import service
+from .agent import ForecastError
+from .chat import answer
 
-from .agent import ForecastAgent, ForecastError
-
-
-PROJECT_HOME = Path(__file__).resolve().parents[1]
-
-
-@lru_cache(maxsize=1)
-def _agent_for(home_text: str) -> ForecastAgent:
-    return ForecastAgent(Path(home_text))
+get_agent = service.get_agent
 
 
-def get_agent() -> ForecastAgent:
-    return _agent_for(os.environ.get("WINDAGENT_HOME", str(PROJECT_HOME)))
+@asynccontextmanager
+async def lifespan(_app):
+    stop = threading.Event()
+    worker = None
+    if service.live_poll_enabled():
+        worker = threading.Thread(target=service.live_poll_loop, args=(stop, 300),
+                                  name="windagent-live-poll", daemon=True)
+        worker.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        if worker:
+            await asyncio.to_thread(worker.join, 5)
 
 
-app = FastAPI(title="Wind Forecast Agent", version="1.0.0")
-
+app = FastAPI(title="Wind Forecast Agent", version="3.0.0", lifespan=lifespan)
 
 class ForecastRequest(BaseModel):
     origin: str
-    horizon: int = Field(default=48, ge=24, le=48)
+    horizon: Literal[24, 48] = 48
     refresh: bool = False
-
 
 class ReplayRequest(BaseModel):
     start: str = "2026-02-01T00:00:00+05:00"
     end: str = "2026-02-28T00:00:00+05:00"
-    horizon: int = Field(default=48, ge=24, le=48)
+    horizon: Literal[24, 48] = 48
 
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+    turbine_id: Literal["T1", "T2"] = "T1"
+    as_of_date: str = "2026-02-01"
+    horizon_hours: Literal[24, 48] = 48
+    history: list[dict] = Field(default_factory=list, max_length=30)
+    mode: Literal["backtest", "live"] = "backtest"
+
+def invoke(function, *args, **kwargs):
+    try:
+        return function(*args, **kwargs)
+    except service.ServiceError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
+    except ForecastError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, "Forecast service unavailable; see server log") from exc
 
 @app.get("/health")
-def health() -> dict:
-    return {"status": "ok", "service": "windagent", "home": os.environ.get("WINDAGENT_HOME", str(PROJECT_HOME))}
+def health():
+    return {"status": "ok", "service": "windagent"}
 
+@app.get("/api/status")
+def status():
+    return invoke(service.status, agent=get_agent())
 
 @app.get("/model")
-def model_metadata() -> dict:
-    try:
-        return get_agent()._metadata()
-    except ForecastError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
+def model_metadata():
+    return invoke(get_agent()._metadata)
 
 @app.post("/forecasts")
-def create_forecast(request: ForecastRequest) -> dict:
-    try:
-        return get_agent().run(request.origin, request.horizon, request.refresh)
-    except ForecastError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
+def create_forecast(request: ForecastRequest):
+    return invoke(get_agent().run, request.origin, request.horizon, request.refresh)
 
 @app.get("/forecasts")
-def list_forecasts(limit: int = Query(default=100, ge=1, le=1000)) -> list[dict]:
+def list_forecasts(limit: int = Query(default=100, ge=1, le=1000)):
     return get_agent().store.list(limit)
 
-
 @app.get("/forecasts/{forecast_id}")
-def forecast_detail(forecast_id: int) -> dict:
-    result = get_agent().store.get(forecast_id)
-    if result is None:
-        raise HTTPException(status_code=404, detail="Forecast not found")
-    return result
-
-
-@app.get("/forecasts/{forecast_id}/csv")
-def forecast_csv(forecast_id: int) -> StreamingResponse:
+def forecast_detail(forecast_id: int):
     record = get_agent().store.get(forecast_id)
     if record is None:
-        raise HTTPException(status_code=404, detail="Forecast not found")
-    if record.get("status") != "succeeded" or "result" not in record:
-        raise HTTPException(status_code=409, detail=f"Forecast is {record.get('status')}; CSV requires a successful forecast")
-    result = record["result"]
-    buf = io.StringIO(newline="")
-    writer = csv.writer(buf)
-    writer.writerow(["timestamp", "turbine_id", "normalized_power", "lower", "upper", "farm_normalized_power_mean_proxy"])
-    farm = {row["timestamp"]: row["normalized_power_mean_proxy"] for row in result["farm"]["series"]}
-    for turbine_id in ("1", "2"):
-        for row in result["turbines"][turbine_id]:
-            ts = row["timestamp"].isoformat() if hasattr(row["timestamp"], "isoformat") else str(row["timestamp"])
-            writer.writerow([ts, turbine_id, row["power"], row["lower"], row["upper"], farm.get(ts, "")])
-    buf.seek(0)
-    return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="forecast-{forecast_id}.csv"'})
+        raise HTTPException(404, "Forecast not found")
+    return record
 
+@app.get("/forecasts/{forecast_id}/csv")
+def forecast_csv(forecast_id: int):
+    content = invoke(service.csv_content, get_agent().store.get(forecast_id))
+    return Response(content, media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="forecast-{forecast_id}.csv"'})
 
 @app.post("/replay")
-def replay(request: ReplayRequest) -> dict:
-    try:
-        return get_agent().replay(request.start, horizon=request.horizon, end=request.end)
-    except ForecastError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
+def replay(request: ReplayRequest):
+    return invoke(get_agent().replay, request.start, horizon=request.horizon, end=request.end)
 
 @app.get("/api/forecast")
-def frontend_forecast(
-    turbine_id: Literal["T1", "T2"],
-    as_of_date: str,
-    horizon_hours: int = Query(default=48, ge=24, le=48),
-    refresh: bool = False,
-) -> dict:
-    """Compatibility view for the frontend prototype; values remain normalized."""
-    try:
-        try:
-            day = datetime.strptime(as_of_date, "%Y-%m-%d").date()
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail="as_of_date must use YYYY-MM-DD") from exc
-        if day.isoformat() != as_of_date:
-            raise HTTPException(status_code=422, detail="as_of_date must use YYYY-MM-DD")
-        timezone_name = "Asia/Almaty"
-        origin = datetime.combine(day, datetime.min.time(), tzinfo=ZoneInfo(timezone_name))
-        agent = get_agent()
-        turbine_number = 1 if turbine_id == "T1" else 2
-        result = agent.run(origin.isoformat(), horizon=horizon_hours, refresh=refresh)
-        # Reuse the just validated weather cache so this adapter includes covariates
-        # without changing the original forecast result/API contract.
-        weather = agent.weather_fetch(turbine_number, origin, horizon_hours, agent.cache_dir, refresh=False)
-        weather, provenance = agent._validate_weather(weather, origin.astimezone(timezone.utc), horizon_hours, turbine_number)
-        result_provenance = result["provenance"].get(str(turbine_number), result["provenance"].get(turbine_number))
-        if provenance != result_provenance:
-            raise ForecastError("Weather provenance changed while assembling the response; retry the forecast so predictions and inputs match")
-        weather_by_time = {
-            timestamp.isoformat(): {"wind_speed": float(wind), "temperature": float(temp)}
-            for timestamp, wind, temp in zip(weather["timestamp"], weather["wind_speed"], weather["temperature"])
-        }
-        forecasts = []
-        for row in result["turbines"][str(turbine_number)]:
-            weather_row = weather_by_time.get(row["timestamp"])
-            if weather_row is None:
-                raise ForecastError("Validated weather timestamps do not match forecast timestamps")
-            forecasts.append({"timestamp": row["timestamp"], "predicted_power": float(row["power"]), **weather_row})
-        warning_details = [
-            {"severity": "warning", "title": "Capacity unavailable", "message": "Power is normalized from 0 to 1; no MW or energy estimate is available because turbine capacity was not supplied."},
-            {"severity": "info", "title": "Weather height assumption", "message": "Weather input is ECMWF 100 m wind speed; actual hub height and site bias are unverified."},
-            {"severity": "info", "title": "Conditional uncertainty only", "message": "Prediction intervals reflect conditional historical residuals and exclude weather forecast uncertainty."},
-        ]
-        return {
-            "turbine_id": turbine_id,
-            "as_of_date": day.isoformat(),
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "horizon_hours": horizon_hours,
-            "forecast": forecasts,
-            "warnings": [item["message"] for item in warning_details],
-            "warning_details": warning_details,
-            "power_unit": "normalized",
-            "capacity_mw": None,
-            "origin": origin.isoformat(),
-            "date_timezone": timezone_name,
-            "model": result["model"],
-            "provenance": provenance,
-            "forecast_id": result["id"],
-            "audit_id": result["id"],
-        }
-    except ForecastError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Weather or forecast data unavailable: {exc}") from exc
+def frontend_forecast(turbine_id: Literal["T1", "T2"], as_of_date: str | None = None,
+                      horizon_hours: int = 48, refresh: bool = False, mode: Literal["backtest", "live"] = "backtest"):
+    return invoke(service.dashboard_forecast, turbine_id, as_of_date, horizon_hours, refresh, agent=get_agent(), mode=mode)
+
+@app.get("/live/forecast")
+def live_forecast(horizon: Literal[24, 48] = 48, refresh: bool = False):
+    return invoke(service.get_live_agent().run, horizon, refresh)
+
+@app.get("/api/live")
+def api_live(hours: Literal[24, 48] = 48, refresh: bool = False):
+    """Compatibility endpoint returning the complete two-turbine live payload."""
+    return invoke(service.get_live_agent().run, hours, refresh)
+
+@app.get("/live/status")
+def live_status():
+    from .live import live_status as status
+    return status()
+
+@app.get("/api/live/status")
+def api_live_status():
+    return live_status()
+
+@app.post("/api/chat")
+def chat(request: ChatRequest):
+    return invoke(answer, request.model_dump(), agent=get_agent())
+
+@app.get("/")
+def index():
+    return FileResponse(service.PROJECT_HOME / "index.html")
+
+@app.get("/styles.css")
+def stylesheet():
+    return FileResponse(service.PROJECT_HOME / "styles.css", media_type="text/css")
+
+@app.get("/app.js")
+def javascript():
+    return FileResponse(service.PROJECT_HOME / "app.js", media_type="text/javascript")
+
+@app.get("/assets/{name}")
+def asset(name: str):
+    if name not in {"wind-night.jpg", "energy-grid.jpg", "operator.jpg", "power_curves_turbines.png"}:
+        raise HTTPException(404, "Not found")
+    media_type = "image/png" if name.endswith(".png") else "image/jpeg"
+    return FileResponse(service.PROJECT_HOME / "assets" / name, media_type=media_type)

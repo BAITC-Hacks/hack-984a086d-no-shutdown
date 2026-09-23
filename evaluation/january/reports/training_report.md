@@ -1,26 +1,31 @@
-# Wind power model training report
+# Обучение модели мощности
 
-Model version: `conditional-power-v1`. Frozen availability cutoff: `2026-01-01T00:00:00+05:00` (2025-12-31T19:00:00Z UTC).
+Версия `conditional-power-v2`. Данные ограничены `2026-01-01T00:00:00+05:00`. Измерений в час: минимум 6/6.
 
-## Chronological diagnostics
+## Проверка без перемешивания времени
 
-Candidates were selected using a 65%/15% chronological fit/validation split. The final 20% was held out from selection; diagnostic models were fitted only on earlier observations. Production artifacts were then refit on all eligible hours before the cutoff.
+Выбор модели: 3 последовательных окон между 2025-06-01 и 2025-12-01. Каждое окно использует только предшествующие наблюдения. Критерий — среднее MAE окон.
 
-| Turbine | Eligible hours | Selected model | Validation MAE | Holdout MAE | Holdout RMSE | Holdout R² |
-|---:|---:|---|---:|---:|---:|---:|
-| 1 | 22,983 | hist_gradient_boosting | 0.0315 | 0.0252 | 0.0540 | 0.975 |
-| 2 | 24,174 | hist_gradient_boosting | 0.0255 | 0.0208 | 0.0489 | 0.979 |
+Финальная проверка: 2025-12-01 — 2026-01-01 (правая граница исключена). Этот период не используется для выбора модели. После оценки выбранная модель переобучена на всех доступных данных для рабочего прогноза.
 
-These scores use observed wind speed and temperature. They measure the conditional power curve/model only, not 24–48-hour forecast accuracy. February actuals are unavailable.
+| Турбина | Часов обучения | Выбранная модель | CV MAE | Holdout MAE | Исходный HGB MAE | Holdout RMSE |
+|---|---:|---|---:|---:|---:|---:|
+| T1 | 22,922 | hgb_mae_smooth | 0.01818 | 0.02579 | 0.02769 | 0.05487 |
+| T2 | 24,040 | hgb_mae_weather_only | 0.01384 | 0.03210 | 0.03424 | 0.09129 |
 
-## Data quality
+MAE/RMSE — в единицах нормализованной мощности. Это ошибки при известных фактических ветре и температуре; они НЕ измеряют точность прогноза на 24–48 часов. Оба алгоритма сравниваются на одинаковых полных часах и временных границах.
 
-See `dataset_profile.json` for raw-row counts, invalid rows, duplicates, undercovered hours, gaps, value ranges, and source hashes.
 
-## Interval meaning
+Все кандидаты и метрики окон: `artifacts/metadata.json`. Индивидуальные прогнозы: `reports/conditional_holdout_predictions.csv`. Качество CSV: `reports/dataset_profile.json`.
 
-Lower and upper bounds use the 90th percentile absolute residual from the pre-holdout validation block, applied symmetrically and clipped to normalized power [0, 1]. They are conditional on the weather features supplied to the model and do not include uncertainty in the weather forecast.
+## Интервал и ограничения
 
-## Reproducibility
+Полоса — 90-й перцентиль абсолютных ошибок выбранной модели на скользящих окнах; это условный разброс ошибки мощности при заданной погоде. Он не включает неопределённость будущей погоды и не гарантирует 90% покрытия будущих наблюдений.
 
-Training uses deterministic scikit-learn estimators with fixed random state, per-source SHA-256 hashes, and a separate artifact for each turbine. The input data ends at 2026-01-31 23:50 local time; complete hourly means are required before the cutoff.
+- No February 2026 actual turbine power was supplied; February accuracy cannot be measured.
+- Scores use observed weather, not forecast weather; they are conditional power-model diagnostics, not 24–48 h forecast skill.
+- Residual bands exclude weather uncertainty and have no guaranteed coverage for operational forecasts.
+- CSV timezone=Asia/Almaty, timestamp=start, telemetry delay=0 are explicit unconfirmed assumptions.
+- Power normalization formula and rated capacities are unknown; predictions are dimensionless, not MW/MWh.
+
+Настройка и воспроизведение: `docs/TUNING.md`. random_state=17 и SHA-256 исходных данных/артефактов записаны в метаданных.
