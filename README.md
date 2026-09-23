@@ -1,8 +1,10 @@
 # No Shutdown wind forecasting agent
 
-A working Python backend for the HackAlem wind power case. It trains separate turbine models, obtains individual archived ECMWF weather runs, produces 24–48 hourly normalized power forecasts, records every decision in SQLite, and checks for changed inputs before recalculating.
+A working live dashboard and autonomous forecasting backend for the HackAlem wind power case. It fetches the latest Open-Meteo ECMWF IFS weather forecasts at both turbine coordinates, runs trained turbine models, applies the team's physics checks, and reports the next 24 or 48 hourly power values in **MW** and energy in **MWh**. The user supplied **2.5 MW per turbine (5 MW total)**; this is editable in `config/turbines.json`.
 
-The team's existing `index.html`, `styles.css` and `app.js` are preserved. That dashboard is still an explicitly labeled **synthetic-data prototype**; the working ML forecasts are available through this backend and its `/docs` interface. The original dashboard instructions are retained in [the frontend README](docs/FRONTEND_README.md).
+The dashboard uses the live backend and refreshes every five minutes. The server also polls weather in the background while it is running. Weather acquisition failures are shown explicitly. Current weather is a **model estimate**, and generation is a forecast, not measured turbine telemetry. [Live forecasting details](docs/LIVE.md).
+
+**Delivery mode: GitHub repository only; deployment is deferred to the team.** No site or background forecasting service is left running on the user's PC. [Deployment handoff](docs/DEPLOYMENT.md). The commands below are optional development instructions.
 
 The supplied datasets contain **291,859 ten-minute observations ending on January 31, 2026**. They contain **no February ground truth**, despite the filenames. February forecasts can be produced, but February accuracy cannot be scored from these files. The model validation report explicitly measures conditional weather-to-power error using observed weather, not operational day-ahead accuracy.
 
@@ -14,7 +16,7 @@ Open PowerShell in this project directory. `start.ps1` uses Python 3.12+ or the 
 powershell -ExecutionPolicy Bypass -File .\start.ps1
 ```
 
-Open http://127.0.0.1:8000/docs for the interactive API. All data, model artifacts and state default to the project directory. Set `WINDAGENT_HOME` or use `python -m windagent --home PATH ...` to choose another data directory. The server binds to localhost by default.
+Open http://127.0.0.1:8000/ for the live dashboard, or http://127.0.0.1:8000/docs for the interactive API. Keep the server running and the PC awake for updates. All data, model artifacts and state default to the project directory. Set `WINDAGENT_HOME` or use `python -m windagent --home PATH ...` to choose another complete data directory. The server binds to localhost by default.
 
 For a conventional Python installation on any supported OS:
 
@@ -25,6 +27,14 @@ python -m venv .venv
 python -m pip install -r requirements.lock.txt
 python -m windagent train
 python -m windagent serve
+```
+
+Fetch and save a current forecast without the dashboard:
+
+```sh
+python -m windagent live --horizon 48 --refresh
+# Writes reports/live_forecast.json and reports/live_forecast.csv.
+python -m windagent watch --interval 300
 ```
 
 ## Reproduce the historical scenario
@@ -42,7 +52,7 @@ The first origin is the end of January 31 in site local time. To forecast from t
 ```sh
 # Refresh one historical origin. Unchanged content reuses the previous predictions.
 python -m windagent forecast --origin 2026-02-01T00:00:00+05:00 --refresh
-# Autonomous polling with a new current UTC-hour origin and refreshed weather.
+# Autonomous polling of the live weather API.
 python -m windagent watch --interval 300
 # Or watch a fixed historical origin for revised provider input.
 python -m windagent watch --origin 2026-02-01T00:00:00+05:00 --interval 300
@@ -95,16 +105,16 @@ All errors use normalized power units. This is a small diagnostic with overlappi
 
 Useful API routes: `GET /health`, `GET /model`, `POST /forecasts`, `GET /forecasts`, `GET /forecasts/{id}`, `GET /forecasts/{id}/csv` and `POST /replay`. A forecast POST body is `{"origin":"2026-02-01T00:00:00+05:00","horizon":48,"refresh":false}`. The detail response includes the audit trail. `/docs` supplies an interactive form for every endpoint.
 
-For the dashboard's documented contract, use `GET /api/forecast?turbine_id=T1&as_of_date=2026-02-01&horizon_hours=48`. It returns `forecast` points with `predicted_power`, `wind_speed` and `temperature`, plus warnings and provenance. **`predicted_power` is normalized**, `power_unit` is `normalized`, and `capacity_mw` is `null`. The existing prototype's 2.5/3.2 MW capacities are synthetic and must not be applied to these predictions. `as_of_date` means midnight in `Asia/Almaty`; point timestamps are UTC. Connecting the UI requires changing its mock generator and unit labels together.
+The live dashboard uses `GET /api/live?hours=48&refresh=false` and `GET /api/live/status`. Its payload includes weather retrieval and forecast issue times, model training age, source hashes, physics corrections, per-turbine MW and farm MWh. `refresh=true` forces a weather request. The older `GET /api/forecast?turbine_id=T1&as_of_date=2026-02-01&horizon_hours=48` remains a historical compatibility route, with normalized `predicted_power` and UTC points; it is not the live dashboard feed.
 
-Power is normalized in [0,1]. The farm series is an equal-weight mean proxy, since rated turbine capacities were not provided. It is not MW or MWh. With nameplate capacities, multiply each turbine's hourly mean normalized power by rated MW and one hour to obtain MWh.
+Historical replay reports retain their original normalized units and equal-weight farm proxy. Live forecasts convert each normalized prediction to MW using the user-supplied 2.5 MW capacity; hourly MWh is MW multiplied by one hour. Farm power and energy are sums of both turbines. Do not compare these units without conversion.
 
 ## Limits that affect the result
 
 1. No February observations were supplied. Do not quote February MAE/RMSE until actuals are obtained.
 2. The weather grid wind height is assumed; actual hub height and SCADA measurement height need confirmation. Grid-to-site bias calibration using pretest archived weather is an important next step.
 3. Publication latency is a conservative configured assumption. Verify it against the organizer's required forecast issuance schedule.
-4. Plant curtailment, outages and nameplate capacities are absent. The models cannot separately identify those causes.
+4. Plant curtailment and outages are absent. The models cannot separately identify those causes. Nameplate capacities were supplied by the user after the original prototype.
 5. Retraining is explicit. Automatic weather updates recalculate predictions; they do not silently retrain a historical model using later labels.
 
 Only load trusted local model artifacts. The API is intended for local hackathon use; add authentication, TLS and request budgets before external deployment. A `Dockerfile` is provided for packaging; a live deployment is not required for the local workflow.

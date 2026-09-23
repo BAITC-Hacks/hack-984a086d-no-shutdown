@@ -12,11 +12,24 @@ from typing import Callable
 
 import pandas as pd
 
+from src.physics import apply_physics_sanity_check
+
 from .storage import ForecastStore
 
 
 class ForecastError(RuntimeError):
     """An actionable forecast pipeline error."""
+
+
+def validate_physics_predictions(frame: pd.DataFrame, pred_col: str = "power", wind_col: str = "wind_speed") -> pd.DataFrame:
+    """Apply the research team's cut-in, rated-range and cut-out sanity check.
+
+    Kept as an explicit helper for live forecasts. Historical replay results are
+    intentionally left unchanged so their archived evidence remains comparable.
+    """
+    if pred_col not in frame or wind_col not in frame:
+        raise ForecastError(f"Physics validation requires {pred_col!r} and {wind_col!r} columns")
+    return apply_physics_sanity_check(frame, pred_col=pred_col, wind_col=wind_col)
 
 
 def _parse_origin(value: str | datetime) -> datetime:

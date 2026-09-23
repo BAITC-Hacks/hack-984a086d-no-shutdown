@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import csv
+import asyncio
 import io
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -11,10 +13,11 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from .agent import ForecastAgent, ForecastError
+from .live import LiveForecastAgent, live_status
 
 
 PROJECT_HOME = Path(__file__).resolve().parents[1]
@@ -29,7 +32,44 @@ def get_agent() -> ForecastAgent:
     return _agent_for(os.environ.get("WINDAGENT_HOME", str(PROJECT_HOME)))
 
 
-app = FastAPI(title="Wind Forecast Agent", version="1.0.0")
+@lru_cache(maxsize=1)
+def _live_agent_for(home_text: str) -> LiveForecastAgent:
+    return LiveForecastAgent(Path(home_text))
+
+
+def get_live_agent() -> LiveForecastAgent:
+    return _live_agent_for(os.environ.get("WINDAGENT_HOME", str(PROJECT_HOME)))
+
+
+_POLL_SECONDS = 300
+_POLL_ENABLED = os.environ.get("WINDAGENT_LIVE_POLL", "1").strip().lower() not in {"0", "false", "no", "off"}
+
+
+async def _live_poll_loop() -> None:
+    while True:
+        try:
+            await asyncio.to_thread(get_live_agent().run, 48, False)
+        except Exception:
+            # The live agent records the failure in its durable audit and status.
+            pass
+        await asyncio.sleep(_POLL_SECONDS)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    task = asyncio.create_task(_live_poll_loop()) if _POLL_ENABLED else None
+    try:
+        yield
+    finally:
+        if task is not None:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+
+app = FastAPI(title="Wind Forecast Agent", version="1.0.0", lifespan=lifespan)
 
 
 class ForecastRequest(BaseModel):
@@ -47,6 +87,46 @@ class ReplayRequest(BaseModel):
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok", "service": "windagent", "home": os.environ.get("WINDAGENT_HOME", str(PROJECT_HOME))}
+
+
+@app.get("/api/live")
+def live_forecast(hours: int = Query(default=48, ge=24, le=48), refresh: bool = False) -> dict:
+    if hours not in (24, 48):
+        raise HTTPException(status_code=422, detail="hours must be 24 or 48")
+    try:
+        return get_live_agent().run(hours, refresh)
+    except ForecastError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Live weather or forecast data unavailable: {exc}") from exc
+
+
+@app.get("/api/live/status")
+def live_forecast_status() -> dict:
+    return live_status(_POLL_ENABLED)
+
+
+@app.get("/")
+def dashboard_index() -> FileResponse:
+    return FileResponse(PROJECT_HOME / "index.html", media_type="text/html")
+
+
+@app.get("/app.js")
+def dashboard_javascript() -> FileResponse:
+    return FileResponse(PROJECT_HOME / "app.js", media_type="text/javascript")
+
+
+@app.get("/styles.css")
+def dashboard_stylesheet() -> FileResponse:
+    return FileResponse(PROJECT_HOME / "styles.css", media_type="text/css")
+
+
+@app.get("/assets/power_curves_turbines.png")
+def power_curve_image() -> FileResponse:
+    path = PROJECT_HOME / "assets" / "power_curves_turbines.png"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Power curve image is not installed")
+    return FileResponse(path, media_type="image/png")
 
 
 @app.get("/model")
@@ -88,6 +168,13 @@ def forecast_csv(forecast_id: int) -> StreamingResponse:
     result = record["result"]
     buf = io.StringIO(newline="")
     writer = csv.writer(buf)
+    if "summary" in result and "capacity" in result and "farm" in result and "points" in result["farm"]:
+        writer.writerow(["timestamp", "turbine_id", "wind_speed_100m_mps", "temperature_c", "normalized_power", "power_mw", "lower_mw", "upper_mw", "energy_mwh"])
+        for turbine in result["turbines"]:
+            for row in turbine["points"]:
+                writer.writerow([row["timestamp"], turbine["turbine_id"], row["wind_speed"], row["temperature"], row["normalized_power"], row["power_mw"], row["lower_mw"], row["upper_mw"], row["energy_mwh"]])
+        buf.seek(0)
+        return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="live-forecast-{forecast_id}.csv"'})
     writer.writerow(["timestamp", "turbine_id", "normalized_power", "lower", "upper", "farm_normalized_power_mean_proxy"])
     farm = {row["timestamp"]: row["normalized_power_mean_proxy"] for row in result["farm"]["series"]}
     for turbine_id in ("1", "2"):
@@ -144,7 +231,7 @@ def frontend_forecast(
                 raise ForecastError("Validated weather timestamps do not match forecast timestamps")
             forecasts.append({"timestamp": row["timestamp"], "predicted_power": float(row["power"]), **weather_row})
         warning_details = [
-            {"severity": "warning", "title": "Capacity unavailable", "message": "Power is normalized from 0 to 1; no MW or energy estimate is available because turbine capacity was not supplied."},
+            {"severity": "info", "title": "Normalized historical route", "message": "This legacy route returns normalized power with no MW or energy estimate. Use /api/live for configured MW and MWh estimates."},
             {"severity": "info", "title": "Weather height assumption", "message": "Weather input is ECMWF 100 m wind speed; actual hub height and site bias are unverified."},
             {"severity": "info", "title": "Conditional uncertainty only", "message": "Prediction intervals reflect conditional historical residuals and exclude weather forecast uncertainty."},
         ]

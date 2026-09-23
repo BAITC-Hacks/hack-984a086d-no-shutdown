@@ -10,5 +10,5 @@ dist/
 *.sqlite*
 *.db*
 runtime/
+data/live_weather/
 *.log
-

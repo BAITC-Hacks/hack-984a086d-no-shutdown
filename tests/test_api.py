@@ -1,10 +1,16 @@
 import json
 
 import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
 
 from windagent import api
 from windagent.agent import ForecastAgent
+
+
+@pytest.fixture(autouse=True)
+def disable_background_poll(monkeypatch):
+    monkeypatch.setattr(api, "_POLL_ENABLED", False)
 
 
 def weather(turbine_id, origin, horizon, cache_dir, refresh=False):

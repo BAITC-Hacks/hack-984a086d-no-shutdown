@@ -29,10 +29,14 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 #wind-dispatch .wd-brand i{color:var(--gold)}
 #wind-dispatch .wd-tag{border:1px solid var(--edge);border-radius:30px;padding:5px 10px;color:var(--sub);font-size:11px;letter-spacing:1px;display:inline-flex;align-items:center;gap:8px}
 #wind-dispatch .wd-tag:before{content:'';width:6px;height:6px;border-radius:50%;background:var(--gold)}
+#wind-dispatch .wd-tag[data-state=ready]:before{background:var(--good)}
+#wind-dispatch .wd-tag[data-state=stale]:before,#wind-dispatch .wd-tag[data-state=error]:before{background:#ff9f88}
+#wind-dispatch .wd-tag[data-state=loading]{opacity:.8}
 #wind-dispatch .wd-title{margin:27px 0 24px;align-items:flex-end}
 #wind-dispatch .wd-title p{margin-top:9px;color:var(--sub)}
 #wind-dispatch .wd-eyebrow{font-size:11px;letter-spacing:1.8px;color:var(--sub);margin-bottom:9px}
 #wind-dispatch .wd-controls{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;padding:17px 18px;background:var(--panel);border:1px solid var(--edge);border-radius:10px;margin-bottom:22px}
+#wind-dispatch .wd-control-note{color:var(--ink);font-size:13px;padding:10px 0;min-height:43px;display:flex;align-items:center}
 #wind-dispatch .wd-field{display:grid;gap:7px;flex:1;min-width:160px;color:var(--sub);font-size:12px}
 #wind-dispatch select,#wind-dispatch input{width:100%;min-height:43px;padding:10px 12px;background:var(--navy);color:var(--ink);border:1px solid var(--edge);border-radius:6px}
 #wind-dispatch .wd-refresh{background:var(--gold);color:#192333;border:0;border-radius:6px;padding:11px 18px;min-height:43px;display:flex;gap:8px;align-items:center;font-weight:700}
@@ -43,6 +47,10 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 #wind-dispatch .wd-value{font-size:28px;margin:12px 0 5px;letter-spacing:-1px;white-space:nowrap}
 #wind-dispatch .wd-unit{font:12px Manrope,sans-serif;color:var(--sub);letter-spacing:0;margin-left:4px}
 #wind-dispatch .wd-kpi-note{font-size:11px;color:var(--sub)}
+#wind-dispatch .wd-site-summary{display:flex;align-items:baseline;gap:14px 24px;flex-wrap:wrap;margin:-9px 0 22px;padding:12px 16px;border:1px solid var(--edge);border-radius:8px;background:#0c1a29;color:var(--sub);font-size:12px}
+#wind-dispatch .wd-site-summary strong{color:var(--ink);font-weight:600}
+#wind-dispatch .wd-site-summary b{color:var(--gold);font-weight:500}
+#wind-dispatch .wd-site-summary small{font-size:10px}
 #wind-dispatch .wd-chartbox{padding:21px 19px 14px;background:var(--panel);border:1px solid var(--edge);border-radius:10px}
 #wind-dispatch .wd-charthead{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;flex-wrap:wrap}
 #wind-dispatch .wd-legend{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0 0}
@@ -66,6 +74,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 #wind-dispatch .wd-weather strong{display:block;font:400 21px 'IBM Plex Mono',monospace;margin-top:5px;white-space:nowrap}
 #wind-dispatch .wd-weather small{color:var(--sub);font-size:11px}
 #wind-dispatch .wd-source{font-size:11px;color:var(--sub);border-top:1px solid var(--edge);padding-top:12px}
+#wind-dispatch .wd-current{color:var(--sub);font-size:11px;line-height:1.6;margin:0 0 14px!important}
+#wind-dispatch .wd-curve-reference{margin-top:16px}
+#wind-dispatch .wd-curve-reference img{display:block;width:100%;height:auto;margin:14px 0 8px;border-radius:6px;background:#fff}
 #wind-dispatch .wd-warning{display:flex;align-items:flex-start;gap:10px;margin-top:16px;font-size:12px}
 #wind-dispatch .wd-warning i{flex-shrink:0;color:var(--gold);margin-top:3px}
 #wind-dispatch .wd-warning.info i{color:var(--teal)}
@@ -108,4 +119,3 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 @media(pointer:coarse){#wind-dispatch button{min-height:44px}
 #wind-dispatch .wd-hour-control input{min-height:44px}
 }
-

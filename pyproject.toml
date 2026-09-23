@@ -17,9 +17,8 @@ test = ["pytest>=8,<10"]
 wind-agent = "windagent.__main__:main"
 
 [tool.setuptools.packages.find]
-include = ["windagent*"]
+include = ["windagent*", "src*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-

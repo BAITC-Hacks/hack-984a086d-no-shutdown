@@ -1,0 +1,8 @@
+{
+  "capacity_mw": 2.5,
+  "capacity_source": "user supplied",
+  "turbines": {
+    "1": {"latitude": 43.64515, "longitude": 78.535604},
+    "2": {"latitude": 43.643198, "longitude": 78.538828}
+  }
+}

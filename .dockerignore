@@ -7,4 +7,5 @@ __pycache__
 *.db*
 .env
 runtime
-
+state
+data/live_weather

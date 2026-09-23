@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "issued_at": "2026-09-23T10:54:37.600002+00:00",
+  "forecast_start": "2026-09-23T11:00:00+00:00",
+  "forecast_rows": 96,
+  "summary": {
+    "energy_24h_mwh": 17.07729649039097,
+    "energy_horizon_mwh": 43.229234849563234,
+    "power_unit": "MW",
+    "energy_unit": "MWh",
+    "energy_interval_hours": 1
+  },
+  "turbines": [
+    {
+      "turbine_id": 1,
+      "energy_24h_mwh": 8.595553979639739,
+      "energy_horizon_mwh": 21.770688086538573,
+      "first_hour_power_mw": 0.599097331404544,
+      "physics_correction_counts": {
+        "power": 6,
+        "lower": 0,
+        "upper": 6
+      }
+    },
+    {
+      "turbine_id": 2,
+      "energy_24h_mwh": 8.481742510751232,
+      "energy_horizon_mwh": 21.45854676302466,
+      "first_hour_power_mw": 0.5897391268326486,
+      "physics_correction_counts": {
+        "power": 6,
+        "lower": 0,
+        "upper": 6
+      }
+    }
+  ],
+  "checks": [
+    "source hashes and retrieval timestamps",
+    "weather rows match original API response",
+    "future consecutive UTC hours",
+    "2.5 MW capacity per turbine",
+    "physics cut-in/out and interval bounds",
+    "independent farm MW/MWh sums",
+    "CSV matches JSON"
+  ],
+  "model_age_days": 234
+}
