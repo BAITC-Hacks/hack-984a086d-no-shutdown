@@ -1,0 +1,19 @@
+{
+  "capacity_mw": 2.5,
+  "capacity_source": "User confirmed: 2.5 MW per turbine",
+  "capacity_verified": true,
+  "capacity_evidence": "User confirmation in project integration instructions",
+  "power_normalization": "assumed_rated_capacity_fraction",
+  "power_normalization_evidence": "Conversion estimate assumes normalized power is a fraction of rated capacity; mapping is unverified against dataset documentation",
+  "physics_scenario": {
+    "enabled": true,
+    "cut_in_speed": 2.5,
+    "rated_speed": 10.5,
+    "cut_out_speed": 25.0,
+    "source": "Explicit research scenario requested for this integration; thresholds are assumptions, not turbine specifications"
+  },
+  "turbines": {
+    "1": {"latitude": 43.64515, "longitude": 78.535604},
+    "2": {"latitude": 43.643198, "longitude": 78.538828}
+  }
+}

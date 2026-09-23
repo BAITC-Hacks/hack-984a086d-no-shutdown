@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -13,6 +14,9 @@ from typing import Callable
 import pandas as pd
 
 from .storage import ForecastStore
+from .weather import PROVENANCE_WARNING
+
+PIPELINE_VERSION = "agent-v2-provenance"
 
 
 class ForecastError(RuntimeError):
@@ -24,7 +28,7 @@ def _parse_origin(value: str | datetime) -> datetime:
         stamp = pd.Timestamp(value)
     except Exception as exc:
         raise ForecastError(f"Invalid forecast origin: {value!r}") from exc
-    if stamp.tzinfo is None:
+    if pd.isna(stamp) or stamp.tzinfo is None:
         raise ForecastError("Forecast origin must include a timezone offset")
     return stamp.tz_convert("UTC").to_pydatetime()
 
@@ -42,11 +46,14 @@ def _frame_hash(frame: pd.DataFrame, provenance: dict) -> str:
 
 
 class ForecastAgent:
-    def __init__(self, home: Path, *, weather_fetch: Callable | None = None, predict: Callable | None = None):
+    def __init__(self, home: Path, *, weather_fetch: Callable | None = None, predict: Callable | None = None,
+                 strict_as_of: bool | None = None):
         self.home = Path(home).resolve()
         self.artifact_dir = self.home / "artifacts"
         self.cache_dir = self.home / "data" / "weather"
         self.store = ForecastStore(self.home / "state" / "windagent.sqlite3")
+        self.strict_as_of = (os.environ.get("WINDAGENT_STRICT_AS_OF", "0") == "1"
+                             if strict_as_of is None else strict_as_of)
         if weather_fetch is None:
             from .weather import fetch_weather
             weather_fetch = fetch_weather
@@ -75,6 +82,8 @@ class ForecastAgent:
         for path in files:
             digest.update(path.relative_to(self.artifact_dir).as_posix().encode())
             digest.update(path.read_bytes())
+        # Do not reuse persisted v1 results with missing covariates/provenance.
+        digest.update(PIPELINE_VERSION.encode())
         return digest.hexdigest()
 
     @staticmethod
@@ -101,6 +110,8 @@ class ForecastAgent:
             if vals.isna().any() or not vals.map(math.isfinite).all():
                 raise ForecastError(f"Weather for turbine {turbine_id} contains missing or non-finite {col}")
             out[col] = vals.astype(float)
+        if (out["wind_speed"] < 0).any():
+            raise ForecastError(f"Weather for turbine {turbine_id} contains negative wind speed")
         for col in ("initialized_at", "available_at"):
             vals = pd.to_datetime(out[col], utc=True, errors="coerce")
             if vals.isna().any():
@@ -110,15 +121,38 @@ class ForecastAgent:
             out[col] = vals
         if (out["initialized_at"] > out["available_at"]).any():
             raise ForecastError(f"Weather for turbine {turbine_id} has availability before model initialization")
-        if out["source"].isna().any() or out["source_hash"].isna().any():
+        if any(out[col].isna().any() or out[col].astype(str).str.strip().eq("").any()
+               for col in ("source", "source_hash")):
             raise ForecastError(f"Weather for turbine {turbine_id} lacks source provenance")
-        provenance = {k: sorted(map(str, out[k].unique())) for k in ("initialized_at", "available_at", "source", "source_hash")}
+        if any(out[col].nunique() != 1 for col in ("initialized_at", "available_at", "source", "source_hash")):
+            raise ForecastError(f"Weather for turbine {turbine_id} mixes multiple model runs")
+        # Omitted metadata never becomes implicit proof of historical issuance.
+        for key, default in (("availability_basis", "unverified"),
+                             ("provenance_status", "unverified"), ("as_of_verified", False)):
+            if key not in out:
+                out[key] = default
+        if not out["as_of_verified"].map(lambda value: isinstance(value, (bool, type(pd.Series([True]).iloc[0])))).all():
+            raise ForecastError("as_of_verified must be a boolean, not a string or number")
+        # A verified adapter must include a publication evidence reference. The
+        # built-in Open-Meteo adapter intentionally cannot satisfy this contract.
+        verified = out["as_of_verified"].eq(True)
+        if verified.any() and ("publication_evidence" not in out or
+                               out.loc[verified, "publication_evidence"].isna().any() or
+                               out.loc[verified, "publication_evidence"].astype(str).str.strip().eq("").any()):
+            raise ForecastError("Verified historical availability requires publication evidence")
+        provenance = {k: sorted(map(str, out[k].unique())) for k in (
+            "initialized_at", "available_at", "source", "source_hash", "availability_basis", "provenance_status")}
+        provenance["as_of_verified"] = bool(verified.all())
+        if "publication_evidence" in out:
+            provenance["publication_evidence"] = sorted(map(str, out["publication_evidence"].unique()))
         return out.sort_values("timestamp").reset_index(drop=True), provenance
 
     def run(self, origin: str, horizon: int = 48, refresh: bool = False) -> dict:
         if not isinstance(horizon, int) or isinstance(horizon, bool) or not 24 <= horizon <= 48:
             raise ForecastError("Horizon must be an integer from 24 through 48 hours")
         stamp = _parse_origin(origin)
+        if stamp.minute or stamp.second or stamp.microsecond:
+            raise ForecastError("Forecast origin must be aligned to the start of an hour")
         origin_key = _iso(stamp)
         forecast_id = self.store.start(origin_key, horizon)
         try:
@@ -130,22 +164,33 @@ class ForecastAgent:
             cutoff = _parse_origin(cutoff_value)
             if stamp < cutoff:
                 raise ForecastError(f"Forecast origin {_iso(stamp)} precedes model availability cutoff {_iso(cutoff)}")
+            for turbine_id, turbine_meta in metadata.get("turbines", {}).items():
+                last_hour = turbine_meta.get("training_last_hour_utc")
+                if last_hour:
+                    training_complete = _parse_origin(last_hour) + timedelta(hours=1)
+                    if training_complete > cutoff or training_complete > stamp:
+                        raise ForecastError(f"Model training for turbine {turbine_id} includes an hour ending after its availability cutoff or forecast origin")
             model_hash = self._model_hash()
             frames, provenance, frame_hashes = {}, {}, {}
             for turbine_id in (1, 2):
                 raw = self.weather_fetch(turbine_id, stamp, horizon, self.cache_dir, refresh=refresh)
                 frame, prov = self._validate_weather(raw, stamp, horizon, turbine_id)
+                if self.strict_as_of and not prov["as_of_verified"]:
+                    raise ForecastError("Strict as-of mode refused unverified historical weather. " + PROVENANCE_WARNING)
                 frames[turbine_id] = frame
                 provenance[turbine_id] = prov
                 frame_hashes[str(turbine_id)] = _frame_hash(frame, prov)
             input_hash = hashlib.sha256(json.dumps(frame_hashes, sort_keys=True).encode()).hexdigest()
+            if model_hash != self._model_hash() or metadata != self._metadata():
+                raise ForecastError("Model artifacts changed during acquisition; retry with a stable trained model")
             self.store.event(forecast_id, "acquire_validate", "succeeded", {"input_hash": input_hash, "provenance": provenance})
             cached = self.store.find_reusable(origin_key, horizon, input_hash, model_hash)
             if cached:
                 result = cached["result"]
-                result.update({"id": forecast_id, "status": "succeeded", "reused": True, "reused_from": cached["id"]})
-                self.store.finish(forecast_id, result, input_hash, model_hash)
-                self.store.event(forecast_id, "reuse", "succeeded", {"source_forecast_id": cached["id"]})
+                result.update({"id": forecast_id, "status": "succeeded", "reused": True, "reused_from": cached["id"],
+                               "generated_at": datetime.now(timezone.utc).isoformat()})
+                self.store.finish(forecast_id, result, input_hash, model_hash,
+                                  stage="reuse", detail={"source_forecast_id": cached["id"]})
                 return result
             self.store.event(forecast_id, "infer", "started", {"model_hash": model_hash})
             turbines = {}
@@ -179,6 +224,15 @@ class ForecastAgent:
             result = {
                 "id": forecast_id, "status": "succeeded", "reused": False,
                 "origin": origin_key, "horizon": horizon,
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "pipeline_version": PIPELINE_VERSION,
+                "as_of_verified": all(prov["as_of_verified"] for prov in provenance.values()),
+                "mode": "strict_historical" if self.strict_as_of else "historical_reconstruction",
+                "weather": {str(tid): [
+                    {"timestamp": row.timestamp.isoformat(), "wind_speed": float(row.wind_speed),
+                     "temperature": float(row.temperature)}
+                    for row in frame.itertuples()
+                ] for tid, frame in frames.items()},
                 "model": {"version": metadata.get("model_version"), "available_at": cutoff.isoformat(), "hash": model_hash},
                 "turbines": turbines,
                 "farm": {"label": "equal-weight normalized power mean proxy; capacity unavailable", "series": farm},
@@ -189,10 +243,12 @@ class ForecastAgent:
                              "warnings": ["Wide conditional residual interval; weather uncertainty is not included."] if mean_half_width >= 0.25 else [],
                              "note": "Power is normalized model output; farm proxy is not kW or energy. Intervals describe conditional residual spread and omit weather forecast uncertainty."},
                 "provenance": provenance,
+                "warnings": [] if all(prov["as_of_verified"] for prov in provenance.values()) else [PROVENANCE_WARNING],
             }
+            if model_hash != self._model_hash() or metadata != self._metadata():
+                raise ForecastError("Model artifacts changed during inference; retry with a stable trained model")
             self.store.event(forecast_id, "infer_analyze", "succeeded", {"rows_per_turbine": horizon, "farm_proxy": True})
             self.store.finish(forecast_id, result, input_hash, model_hash)
-            self.store.event(forecast_id, "persist", "succeeded", {"forecast_id": forecast_id})
             return result
         except Exception as exc:
             message = str(exc) or exc.__class__.__name__
@@ -218,7 +274,7 @@ class ForecastAgent:
             if last < first:
                 raise ForecastError("Replay end must be on or after start")
             days = (last.date() - first.date()).days + 1
-        if days < 1 or days > 31:
+        if not isinstance(days, int) or isinstance(days, bool) or days < 1 or days > 31:
             raise ForecastError("Replay range must contain from 1 through 31 local days")
         outputs = []
         for i in range(days):

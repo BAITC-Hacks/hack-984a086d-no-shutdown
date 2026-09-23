@@ -1,5 +1,7 @@
 {
-  "diagnostic": "archived_forecast_weather_rolling_origin",
+  "diagnostic": "unverified_hindcast_weather_rolling_origin",
+  "as_of_verified": false,
+  "provenance_status": "unverified_hindcast",
   "model_available_at": "2025-12-31T19:00:00Z",
   "training_cutoff_local": "2026-01-01T00:00:00+05:00",
   "training_artifacts": "artifact_workspace/artifacts (separate from production)",
@@ -20,6 +22,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2025-12-31T06:00:00+00:00",
           "weather_source_hash": "a4958425c086601012bf302246f67eea4474b8c6bd169f9f4b3b3fd5ea1ee60b",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -28,6 +32,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2025-12-31T06:00:00+00:00",
           "weather_source_hash": "39d8ecd3c96301d572ef5a0df87e8a5087554f41810d58d62c97a38a49d33c8d",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -42,6 +48,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2026-01-01T06:00:00+00:00",
           "weather_source_hash": "beef25223ae52d31b08bc4c32f925feaf85781cad0f2511b0f1716b689d186bd",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -50,6 +58,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2026-01-01T06:00:00+00:00",
           "weather_source_hash": "a8ffa94620baef811822ce046a5e63b0bb79458c2e21b94195c583d58be9f7d4",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -64,6 +74,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2026-01-02T06:00:00+00:00",
           "weather_source_hash": "bf2cfeabc2bb3a581453e081fccc366f9832ced58ad37d5dd5f1e3e252df3582",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -72,6 +84,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2026-01-02T06:00:00+00:00",
           "weather_source_hash": "f45517beba2f0519b7628488561d58deac4a34d062ef688cc8915da73ed81837",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -86,6 +100,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2026-01-03T06:00:00+00:00",
           "weather_source_hash": "acdb63f7dd02d05d9d8d23b3caf2a76c34b7304799aaf34ad7e09f0e6b96b032",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -94,6 +110,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2026-01-03T06:00:00+00:00",
           "weather_source_hash": "a4f120cbdab10093a32e9d216d15bb4aef766e1ab77ce921bc3e2293721784e9",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -108,6 +126,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2026-01-04T06:00:00+00:00",
           "weather_source_hash": "e020228e7a7b9aae6a3a92b9520e874fd197e4055185442c37ec8c221ca5bfa1",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -116,6 +136,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2026-01-04T06:00:00+00:00",
           "weather_source_hash": "8040005af7cfaf4d593584b33891741d3238cde90afc097c1c1ba6ac0541c4a6",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -130,6 +152,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2026-01-05T06:00:00+00:00",
           "weather_source_hash": "112c08dd94027df38a972d7507b43d3dc692815f923dc92cbcba4c9cbcad2a7d",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -138,6 +162,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2026-01-05T06:00:00+00:00",
           "weather_source_hash": "9a50247895b3a7c2102440f5a1a7efc7757e38c16ab8e3831a1adb4f6ee4896a",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -152,6 +178,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2026-01-06T06:00:00+00:00",
           "weather_source_hash": "d876923634f3c1dbb7e6c3d1e434addfc51c9c03aca4dea5673842ed74eb2c12",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -160,6 +188,8 @@
           "status": "scored",
           "weather_run_initialized_at": "2026-01-06T06:00:00+00:00",
           "weather_source_hash": "9421abefea66f1c3ff66cf8dc27a12fdc7ea659ccb26957a29dcb72b5353e99a",
+          "as_of_verified": false,
+          "provenance_status": "unverified_hindcast",
           "requested_weather_hours": 48,
           "matched_actual_hours": 48,
           "missing_actual_hours": 0
@@ -179,10 +209,10 @@
     "1": {
       "0-23": {
         "n": 168,
-        "mae": 0.1397913100942112,
-        "rmse": 0.23301370801792043,
-        "bias": -0.1009679246690528,
-        "r2": 0.4933144294794335,
+        "mae": 0.13767232026512982,
+        "rmse": 0.23129603761941744,
+        "bias": -0.10175435811318913,
+        "r2": 0.5007570045731841,
         "persistence_baseline": {
           "n": 168,
           "mae": 0.28495039682539675,
@@ -193,10 +223,10 @@
       },
       "24-47": {
         "n": 168,
-        "mae": 0.13548205884559156,
-        "rmse": 0.2223819848984413,
-        "bias": -0.08699103458124215,
-        "r2": 0.4875191283940482,
+        "mae": 0.13244681122054835,
+        "rmse": 0.2190768928754491,
+        "bias": -0.0881099543484993,
+        "r2": 0.502639144936879,
         "persistence_baseline": {
           "n": 168,
           "mae": 0.2291865079365079,
@@ -209,10 +239,10 @@
     "2": {
       "0-23": {
         "n": 168,
-        "mae": 0.13889713452773295,
-        "rmse": 0.23344452946740316,
-        "bias": -0.10243400079971685,
-        "r2": 0.48778794419035376,
+        "mae": 0.14050131149603118,
+        "rmse": 0.23645283475890447,
+        "bias": -0.1064546894323118,
+        "r2": 0.4745015445798768,
         "persistence_baseline": {
           "n": 168,
           "mae": 0.29944444444444446,
@@ -223,10 +253,10 @@
       },
       "24-47": {
         "n": 168,
-        "mae": 0.13332373142306095,
-        "rmse": 0.22328226600701148,
-        "bias": -0.08775835390075297,
-        "r2": 0.47841670701602423,
+        "mae": 0.13246405732667765,
+        "rmse": 0.22460205411566936,
+        "bias": -0.09341635538435537,
+        "r2": 0.47223248205210644,
         "persistence_baseline": {
           "n": 168,
           "mae": 0.21441468253968252,
@@ -239,10 +269,10 @@
     "farm_equal_weight_proxy": {
       "0-23": {
         "n": 168,
-        "mae": 0.13865524304002944,
-        "rmse": 0.2328580836858815,
-        "bias": -0.10170096273438481,
-        "r2": 0.4915303375488542,
+        "mae": 0.13894655405053186,
+        "rmse": 0.23354214072283763,
+        "bias": -0.10410452377275045,
+        "r2": 0.4885385312409698,
         "persistence_baseline": {
           "n": 168,
           "mae": 0.2921775793650793,
@@ -253,10 +283,10 @@
       },
       "24-47": {
         "n": 168,
-        "mae": 0.13342570991436614,
-        "rmse": 0.2224785773141203,
-        "bias": -0.08737469424099756,
-        "r2": 0.48390957611340735,
+        "mae": 0.13211773489218942,
+        "rmse": 0.22152738007322695,
+        "bias": -0.09076315486642733,
+        "r2": 0.4883131854364745,
         "persistence_baseline": {
           "n": 168,
           "mae": 0.221155753968254,
@@ -270,11 +300,11 @@
   "row_count": 672,
   "predictions_csv": "january_backtest_predictions.csv",
   "caveats": [
-    "Only archived weather forecast runs available as of each origin are scored; no reanalysis is substituted.",
+    "Cached provider data is labeled hindcast. Initialization plus assumed latency passes the configured date gate, but historical operational publication is not verified; this is not proven leakage-free day-ahead skill.",
     "The Jan 1 00:00 local model cutoff precedes every scored origin; observations after the cutoff are excluded from training.",
     "Origins overlap, so the lead-bucket sample rows are correlated and are not independent trials.",
     "Persistence baseline carries forward the latest complete hourly power value available at each origin; stale observation time and age are included per prediction.",
-    "This is a seven-origin January diagnostic and should not be interpreted as a stable seasonal estimate.",
+    "This is a 7-origin January diagnostic and should not be interpreted as a stable seasonal estimate.",
     "Power is normalized; the farm equal-weight mean is a proxy, not capacity-weighted generation."
   ]
 }

@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -11,7 +12,11 @@ from . import service
 from .agent import ForecastError
 from .chat import answer
 
-STATIC = {"/": ("index.html", "text/html"), "/styles.css": ("styles.css", "text/css"), "/app.js": ("app.js", "text/javascript")}
+STATIC = {"/": ("index.html", "text/html"), "/styles.css": ("styles.css", "text/css"), "/app.js": ("app.js", "text/javascript"),
+          "/assets/wind-night.jpg": ("assets/wind-night.jpg", "image/jpeg"),
+          "/assets/energy-grid.jpg": ("assets/energy-grid.jpg", "image/jpeg"),
+          "/assets/operator.jpg": ("assets/operator.jpg", "image/jpeg"),
+          "/assets/power_curves_turbines.png": ("assets/power_curves_turbines.png", "image/png")}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -23,7 +28,7 @@ class Handler(BaseHTTPRequestHandler):
         else:
             data = value if isinstance(value, bytes) else value.encode("utf-8")
         self.send_response(status)
-        self.send_header("Content-Type", content_type + "; charset=utf-8")
+        self.send_header("Content-Type", content_type + ("; charset=utf-8" if content_type.startswith("text/") or content_type == "application/json" else ""))
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -65,7 +70,17 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/status" and method == "GET":
                 return self._send(service.status())
             if path == "/api/forecast" and method == "GET":
-                return self._send(service.dashboard_forecast(query.get("turbine_id"), query.get("as_of_date"), query.get("horizon_hours", 48), query.get("refresh", False)))
+                return self._send(service.dashboard_forecast(query.get("turbine_id"), query.get("as_of_date"), query.get("horizon_hours", 48), query.get("refresh", False), mode=query.get("mode", "backtest")))
+            if path == "/live/forecast" and method == "GET":
+                return self._send(service.get_live_agent().run(service.horizon_value(query.get("horizon",48)), service.boolean_value(query.get("refresh", False))))
+            if path == "/api/live" and method == "GET":
+                return self._send(service.get_live_agent().run(service.horizon_value(query.get("hours",48)), service.boolean_value(query.get("refresh", False))))
+            if path == "/live/status" and method == "GET":
+                from .live import live_status
+                return self._send(live_status())
+            if path == "/api/live/status" and method == "GET":
+                from .live import live_status
+                return self._send(live_status())
             if path == "/api/chat" and method == "POST":
                 return self._send(answer(payload))
             if path == "/model" and method == "GET":
@@ -104,10 +119,20 @@ class Handler(BaseHTTPRequestHandler):
 
 def serve(host="127.0.0.1", port=8000):
     server = ThreadingHTTPServer((host, port), Handler)
+    server.daemon_threads = True
+    stop = threading.Event()
+    worker = None
+    if service.live_poll_enabled():
+        worker = threading.Thread(target=service.live_poll_loop, args=(stop, 300),
+                                  name="windagent-live-poll", daemon=True)
+        worker.start()
     print(f"Wind Agent: http://{host}:{port} — Ctrl+C to stop", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        stop.set()
+        if worker:
+            worker.join(timeout=5)
         server.server_close()

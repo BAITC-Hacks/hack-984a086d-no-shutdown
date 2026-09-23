@@ -1,5 +1,5 @@
 {
-  "model_version": "conditional-power-v1",
+  "model_version": "conditional-power-v2",
   "model_available_at": "2026-01-31T19:00:00Z",
   "model_available_at_local": "2026-02-01T00:00:00+05:00",
   "timezone": "Asia/Almaty",
@@ -15,6 +15,14 @@
     "turbine_1.csv",
     "turbine_2.csv"
   ],
+  "training_config": {
+    "timestamp_semantics": "start",
+    "min_samples": 6,
+    "validation_months": 6,
+    "folds": 3,
+    "holdout_start": "2026-01-01T00:00:00+05:00",
+    "model_config": {}
+  },
   "library_versions": {
     "pandas": "3.0.6",
     "numpy": "2.5.3",
@@ -28,231 +36,694 @@
   "turbines": {
     "1": {
       "artifact": "turbine_1.joblib",
-      "artifact_sha256": "f9a25c5c30dbc11d6a8ac3b8b734049a0dc709bd7e5f7bcfef2a72b1940d0d74",
-      "selected_candidate": "hist_gradient_boosting",
-      "training_hours": 23727,
+      "artifact_sha256": "fc1b034f5b3234a0049818d40b0784708b832c7be8f4883b8f099ca7247b13ae",
+      "selected_candidate": "hgb_mae_smooth",
+      "training_hours": 23666,
       "training_first_hour_utc": "2023-03-10T18:00:00Z",
       "training_last_hour_utc": "2026-01-31T18:00:00Z",
       "chronological_split": {
         "fit": {
-          "row_count": 15422,
+          "row_count": 18583,
           "first_hour_utc": "2023-03-10T18:00:00Z",
-          "last_hour_utc": "2025-02-13T16:00:00Z"
+          "last_hour_utc": "2025-06-30T18:00:00Z"
         },
         "validation": {
-          "row_count": 3559,
-          "first_hour_utc": "2025-02-13T17:00:00Z",
-          "last_hour_utc": "2025-07-15T09:00:00Z"
+          "row_count": 4339,
+          "first_hour_utc": "2025-06-30T19:00:00Z",
+          "last_hour_utc": "2025-12-31T18:00:00Z"
         },
         "holdout": {
-          "row_count": 4746,
-          "first_hour_utc": "2025-07-15T10:00:00Z",
+          "row_count": 744,
+          "first_hour_utc": "2025-12-31T19:00:00Z",
           "last_hour_utc": "2026-01-31T18:00:00Z"
         },
-        "selection_rule": "minimum validation MAE; holdout metrics are diagnostic only"
+        "selection_rule": "minimum mean rolling-fold MAE; final holdout not used for selection"
       },
+      "rolling_validation_folds": [
+        {
+          "fit": {
+            "row_count": 18583,
+            "first_hour_utc": "2023-03-10T18:00:00Z",
+            "last_hour_utc": "2025-06-30T18:00:00Z"
+          },
+          "validation": {
+            "row_count": 1473,
+            "first_hour_utc": "2025-06-30T19:00:00Z",
+            "last_hour_utc": "2025-08-31T18:00:00Z"
+          },
+          "candidates": {
+            "hist_gradient_boosting": {
+              "n": 1473,
+              "mae": 0.027933690133603674,
+              "rmse": 0.05035537311505083,
+              "bias": -0.01522190076403859,
+              "r2": 0.9708356014506512
+            },
+            "wind_bin_curve": {
+              "n": 1473,
+              "mae": 0.020864231034170424,
+              "rmse": 0.03754148997855043,
+              "bias": -0.0018828520553535672,
+              "r2": 0.9837899483554531
+            },
+            "wind_median_curve": {
+              "n": 1473,
+              "mae": 0.023254109760386135,
+              "rmse": 0.04176031652005206,
+              "bias": 0.0042960126685736835,
+              "r2": 0.9799419388320074
+            },
+            "hgb_mae_smooth": {
+              "n": 1473,
+              "mae": 0.015064656232617293,
+              "rmse": 0.03280628384287104,
+              "bias": 0.0018105284059967738,
+              "r2": 0.9876212878479863
+            },
+            "hgb_mae_detailed": {
+              "n": 1473,
+              "mae": 0.01490857579321662,
+              "rmse": 0.03258468952403294,
+              "bias": 0.0014847424739495869,
+              "r2": 0.9877879503171929
+            },
+            "hgb_mae_weather_only": {
+              "n": 1473,
+              "mae": 0.015284415643735083,
+              "rmse": 0.03307331000088664,
+              "bias": 0.00017789643678950783,
+              "r2": 0.9874189551334633
+            }
+          }
+        },
+        {
+          "fit": {
+            "row_count": 20056,
+            "first_hour_utc": "2023-03-10T18:00:00Z",
+            "last_hour_utc": "2025-08-31T18:00:00Z"
+          },
+          "validation": {
+            "row_count": 1406,
+            "first_hour_utc": "2025-08-31T19:00:00Z",
+            "last_hour_utc": "2025-10-31T18:00:00Z"
+          },
+          "candidates": {
+            "hist_gradient_boosting": {
+              "n": 1406,
+              "mae": 0.014231917830320849,
+              "rmse": 0.030986175764701702,
+              "bias": 0.0005367832648814639,
+              "r2": 0.9915448446472014
+            },
+            "wind_bin_curve": {
+              "n": 1406,
+              "mae": 0.01713171636077789,
+              "rmse": 0.03285129200891959,
+              "bias": -0.005550265401190581,
+              "r2": 0.9904963476578117
+            },
+            "wind_median_curve": {
+              "n": 1406,
+              "mae": 0.015182837567547175,
+              "rmse": 0.032618538237463406,
+              "bias": 0.0015540667989809194,
+              "r2": 0.9906305387146653
+            },
+            "hgb_mae_smooth": {
+              "n": 1406,
+              "mae": 0.013509743821586718,
+              "rmse": 0.03128243374451426,
+              "bias": 0.0019136723316844787,
+              "r2": 0.9913823927242671
+            },
+            "hgb_mae_detailed": {
+              "n": 1406,
+              "mae": 0.013537918287633496,
+              "rmse": 0.03135495734174479,
+              "bias": 0.0014874058119003469,
+              "r2": 0.9913423891654016
+            },
+            "hgb_mae_weather_only": {
+              "n": 1406,
+              "mae": 0.013653207651587762,
+              "rmse": 0.03142256361456979,
+              "bias": 0.0011522367433705733,
+              "r2": 0.9913050145452978
+            }
+          }
+        },
+        {
+          "fit": {
+            "row_count": 21462,
+            "first_hour_utc": "2023-03-10T18:00:00Z",
+            "last_hour_utc": "2025-10-31T18:00:00Z"
+          },
+          "validation": {
+            "row_count": 1460,
+            "first_hour_utc": "2025-10-31T19:00:00Z",
+            "last_hour_utc": "2025-12-31T18:00:00Z"
+          },
+          "candidates": {
+            "hist_gradient_boosting": {
+              "n": 1460,
+              "mae": 0.031116376436788894,
+              "rmse": 0.06882167146466264,
+              "bias": 0.0023084373552470787,
+              "r2": 0.9671819248916637
+            },
+            "wind_bin_curve": {
+              "n": 1460,
+              "mae": 0.030892786884616507,
+              "rmse": 0.047412465626497015,
+              "bias": 0.0003491227581684112,
+              "r2": 0.9844242935293108
+            },
+            "wind_median_curve": {
+              "n": 1460,
+              "mae": 0.025071942349459118,
+              "rmse": 0.04575019458872358,
+              "bias": 0.010467274260499277,
+              "r2": 0.9854973100081271
+            },
+            "hgb_mae_smooth": {
+              "n": 1460,
+              "mae": 0.021125143610688776,
+              "rmse": 0.044530290352182825,
+              "bias": 0.009210110754678912,
+              "r2": 0.9862604114870418
+            },
+            "hgb_mae_detailed": {
+              "n": 1460,
+              "mae": 0.021321301964572787,
+              "rmse": 0.04511858173513556,
+              "bias": 0.009969600440019745,
+              "r2": 0.9858949850282017
+            },
+            "hgb_mae_weather_only": {
+              "n": 1460,
+              "mae": 0.02090248650387692,
+              "rmse": 0.043827229133355974,
+              "bias": 0.007253438596778518,
+              "r2": 0.9866908383128296
+            }
+          }
+        }
+      ],
       "candidate_validation_metrics": {
         "hist_gradient_boosting": {
-          "n": 3559,
-          "mae": 0.0329333002021237,
-          "rmse": 0.09157082939585802,
-          "bias": 0.003479232321206186,
-          "r2": 0.9339624942833082
+          "n": 4339,
+          "mae": 0.02456471805345497,
+          "rmse": 0.05258948072806243,
+          "bias": -0.0042168296880259895,
+          "r2": 0.9767389005587844,
+          "mean_fold_mae": 0.02442732813357114
         },
         "wind_bin_curve": {
-          "n": 3559,
-          "mae": 0.03373884937255029,
-          "rmse": 0.09213873050698947,
-          "bias": 0.006712865930298012,
-          "r2": 0.9331408556701367
+          "n": 4339,
+          "mae": 0.023029194369238726,
+          "rmse": 0.03980637958569565,
+          "bias": -0.0023202108791619924,
+          "r2": 0.9866728332148095,
+          "mean_fold_mae": 0.02296291142652161
+        },
+        "wind_median_curve": {
+          "n": 4339,
+          "mae": 0.021250382375485235,
+          "rmse": 0.040510221995360744,
+          "bias": 0.005484043558540022,
+          "r2": 0.9861973740444652,
+          "mean_fold_mae": 0.021169629892464143
+        },
+        "hgb_mae_smooth": {
+          "n": 4339,
+          "mae": 0.016600057182623144,
+          "rmse": 0.03673817565557264,
+          "bias": 0.004333785052365254,
+          "r2": 0.9886481238219046,
+          "mean_fold_mae": 0.016566514554964263
+        },
+        "hgb_mae_detailed": {
+          "n": 4339,
+          "mae": 0.016622204684050946,
+          "rmse": 0.036932267889197914,
+          "bias": 0.00434061647340135,
+          "r2": 0.9885278603007401,
+          "mean_fold_mae": 0.0165892653484743
+        },
+        "hgb_mae_weather_only": {
+          "n": 4339,
+          "mae": 0.016646228277717095,
+          "rmse": 0.03657335387972141,
+          "bias": 0.0028744196044864266,
+          "r2": 0.9887497532173948,
+          "mean_fold_mae": 0.01661336993306659
         }
       },
-      "selection_justification": "Selected hist_gradient_boosting: it had the lowest MAE on the chronological validation block; the later holdout was not used for selection.",
+      "selection_justification": "hgb_mae_smooth: lowest mean MAE across 3 chronological folds, before final holdout.",
       "validation": {
-        "n": 3559,
-        "mae": 0.0329333002021237,
-        "rmse": 0.09157082939585802,
-        "bias": 0.003479232321206186,
-        "r2": 0.9339624942833082
+        "n": 4339,
+        "mae": 0.016600057182623144,
+        "rmse": 0.03673817565557264,
+        "bias": 0.004333785052365254,
+        "r2": 0.9886481238219046,
+        "mean_fold_mae": 0.016566514554964263
       },
       "holdout": {
-        "n": 4746,
-        "mae": 0.023298914886382967,
-        "rmse": 0.0511529696925829,
-        "bias": -0.0010894028163090808,
-        "r2": 0.9782470059082968
+        "n": 744,
+        "mae": 0.021694782345275877,
+        "rmse": 0.04805273961208144,
+        "bias": 0.00452483641825706,
+        "r2": 0.9797045854372579
       },
       "holdout_candidates": {
+        "hgb_mae_smooth": {
+          "n": 744,
+          "mae": 0.021694782345275877,
+          "rmse": 0.04805273961208144,
+          "bias": 0.00452483641825706,
+          "r2": 0.9797045854372579
+        },
         "hist_gradient_boosting": {
-          "n": 4746,
-          "mae": 0.023298914886382967,
-          "rmse": 0.0511529696925829,
-          "bias": -0.0010894028163090808,
-          "r2": 0.9782470059082968
+          "n": 744,
+          "mae": 0.023617399457170927,
+          "rmse": 0.048193521742779084,
+          "bias": 0.0020257919164480016,
+          "r2": 0.9795854905758811
         },
         "wind_bin_curve": {
-          "n": 4746,
-          "mae": 0.025276702991629187,
-          "rmse": 0.043967430725600214,
-          "bias": -0.0007601664114980148,
-          "r2": 0.9839291253286272
+          "n": 744,
+          "mae": 0.0356765707308758,
+          "rmse": 0.05815372960153445,
+          "bias": 0.011520238659621766,
+          "r2": 0.9702753488486666
         }
       },
       "conditional_interval": {
         "quantile": 0.9,
-        "symmetric_radius": 0.0636300460730358,
-        "validation_empirical_coverage": 0.9002528800224783
+        "symmetric_radius": 0.03912811624529158,
+        "validation_empirical_coverage": 0.9002074210647615,
+        "holdout_empirical_coverage": 0.8333333333333334
+      },
+      "training_weather_ranges": {
+        "wind_speed": [
+          0.0,
+          20.398333333333333
+        ],
+        "temperature": [
+          -18.426666666666666,
+          43.068333333333335
+        ]
       }
     },
     "2": {
       "artifact": "turbine_2.joblib",
-      "artifact_sha256": "11dc173889699321427a6c54414e7b42031f8316e91b7a3f82c6ae1f3c58fc90",
-      "selected_candidate": "hist_gradient_boosting",
-      "training_hours": 24918,
+      "artifact_sha256": "60e1dc9195c15fb6728f88a13cbf63a6229ae5ed8e7bb70b24c9cd1aa41e3452",
+      "selected_candidate": "hgb_mae_weather_only",
+      "training_hours": 24784,
       "training_first_hour_utc": "2023-03-10T18:00:00Z",
       "training_last_hour_utc": "2026-01-31T18:00:00Z",
       "chronological_split": {
         "fit": {
-          "row_count": 16196,
+          "row_count": 19707,
           "first_hour_utc": "2023-03-10T18:00:00Z",
-          "last_hour_utc": "2025-01-26T11:00:00Z"
+          "last_hour_utc": "2025-06-30T18:00:00Z"
         },
         "validation": {
-          "row_count": 3738,
-          "first_hour_utc": "2025-01-26T12:00:00Z",
-          "last_hour_utc": "2025-07-05T07:00:00Z"
+          "row_count": 4333,
+          "first_hour_utc": "2025-06-30T19:00:00Z",
+          "last_hour_utc": "2025-12-31T18:00:00Z"
         },
         "holdout": {
-          "row_count": 4984,
-          "first_hour_utc": "2025-07-05T08:00:00Z",
+          "row_count": 744,
+          "first_hour_utc": "2025-12-31T19:00:00Z",
           "last_hour_utc": "2026-01-31T18:00:00Z"
         },
-        "selection_rule": "minimum validation MAE; holdout metrics are diagnostic only"
+        "selection_rule": "minimum mean rolling-fold MAE; final holdout not used for selection"
       },
+      "rolling_validation_folds": [
+        {
+          "fit": {
+            "row_count": 19707,
+            "first_hour_utc": "2023-03-10T18:00:00Z",
+            "last_hour_utc": "2025-06-30T18:00:00Z"
+          },
+          "validation": {
+            "row_count": 1473,
+            "first_hour_utc": "2025-06-30T19:00:00Z",
+            "last_hour_utc": "2025-08-31T18:00:00Z"
+          },
+          "candidates": {
+            "hist_gradient_boosting": {
+              "n": 1473,
+              "mae": 0.01501215133797474,
+              "rmse": 0.02941368815351915,
+              "bias": -0.0017942096359063952,
+              "r2": 0.990099367705678
+            },
+            "wind_bin_curve": {
+              "n": 1473,
+              "mae": 0.019394771108607572,
+              "rmse": 0.03543937493640848,
+              "bias": -0.0005883862837707948,
+              "r2": 0.9856273757851595
+            },
+            "wind_median_curve": {
+              "n": 1473,
+              "mae": 0.021342710417643202,
+              "rmse": 0.03880891447927207,
+              "bias": 0.003190501787899621,
+              "r2": 0.98276437825217
+            },
+            "hgb_mae_smooth": {
+              "n": 1473,
+              "mae": 0.013725625348484469,
+              "rmse": 0.02932823818110712,
+              "bias": 0.0019434940906541537,
+              "r2": 0.9901568089811918
+            },
+            "hgb_mae_detailed": {
+              "n": 1473,
+              "mae": 0.01367864617372136,
+              "rmse": 0.029454403118701074,
+              "bias": 0.001855324320658473,
+              "r2": 0.9900719394628182
+            },
+            "hgb_mae_weather_only": {
+              "n": 1473,
+              "mae": 0.014080109602276373,
+              "rmse": 0.02952296064107446,
+              "bias": -0.00044732392082775293,
+              "r2": 0.9900256689370881
+            }
+          }
+        },
+        {
+          "fit": {
+            "row_count": 21180,
+            "first_hour_utc": "2023-03-10T18:00:00Z",
+            "last_hour_utc": "2025-08-31T18:00:00Z"
+          },
+          "validation": {
+            "row_count": 1406,
+            "first_hour_utc": "2025-08-31T19:00:00Z",
+            "last_hour_utc": "2025-10-31T18:00:00Z"
+          },
+          "candidates": {
+            "hist_gradient_boosting": {
+              "n": 1406,
+              "mae": 0.019215300488439384,
+              "rmse": 0.036371259447576396,
+              "bias": 0.008150926469705801,
+              "r2": 0.9884234366295208
+            },
+            "wind_bin_curve": {
+              "n": 1406,
+              "mae": 0.01601960260757058,
+              "rmse": 0.031941747211259676,
+              "bias": -0.0024036770307177637,
+              "r2": 0.9910714628419438
+            },
+            "wind_median_curve": {
+              "n": 1406,
+              "mae": 0.015019248667729997,
+              "rmse": 0.03175991067850399,
+              "bias": 0.002343946770878966,
+              "r2": 0.9911728294351723
+            },
+            "hgb_mae_smooth": {
+              "n": 1406,
+              "mae": 0.013759900419469362,
+              "rmse": 0.031416138603766575,
+              "bias": 0.005806881831329009,
+              "r2": 0.991362887381735
+            },
+            "hgb_mae_detailed": {
+              "n": 1406,
+              "mae": 0.0150052378102444,
+              "rmse": 0.032632091609216395,
+              "bias": 0.007149384329782952,
+              "r2": 0.9906813543681243
+            },
+            "hgb_mae_weather_only": {
+              "n": 1406,
+              "mae": 0.012882459642923524,
+              "rmse": 0.030342721976077656,
+              "bias": 0.001874919503822125,
+              "r2": 0.9919430243846926
+            }
+          }
+        },
+        {
+          "fit": {
+            "row_count": 22586,
+            "first_hour_utc": "2023-03-10T18:00:00Z",
+            "last_hour_utc": "2025-10-31T18:00:00Z"
+          },
+          "validation": {
+            "row_count": 1454,
+            "first_hour_utc": "2025-10-31T19:00:00Z",
+            "last_hour_utc": "2025-12-31T18:00:00Z"
+          },
+          "candidates": {
+            "hist_gradient_boosting": {
+              "n": 1454,
+              "mae": 0.029035905146502342,
+              "rmse": 0.0727383982758257,
+              "bias": 0.008195495030277625,
+              "r2": 0.9628945292143546
+            },
+            "wind_bin_curve": {
+              "n": 1454,
+              "mae": 0.03219100861475913,
+              "rmse": 0.06934692414290662,
+              "bias": 0.009183989854485992,
+              "r2": 0.9662739961778437
+            },
+            "wind_median_curve": {
+              "n": 1454,
+              "mae": 0.02879606516309653,
+              "rmse": 0.06915715061184087,
+              "bias": 0.01542821675778242,
+              "r2": 0.966458331544896
+            },
+            "hgb_mae_smooth": {
+              "n": 1454,
+              "mae": 0.023024631933009385,
+              "rmse": 0.06692905784828357,
+              "bias": 0.012720751119812785,
+              "r2": 0.9685847946968701
+            },
+            "hgb_mae_detailed": {
+              "n": 1454,
+              "mae": 0.023235456466139122,
+              "rmse": 0.06703006514370426,
+              "bias": 0.013206114610754058,
+              "r2": 0.9684899014039785
+            },
+            "hgb_mae_weather_only": {
+              "n": 1454,
+              "mae": 0.023091858171537433,
+              "rmse": 0.06690746850012637,
+              "bias": 0.0106270207151167,
+              "r2": 0.9686050586730074
+            }
+          }
+        }
+      ],
       "candidate_validation_metrics": {
         "hist_gradient_boosting": {
-          "n": 3738,
-          "mae": 0.024225946020170298,
-          "rmse": 0.06612757917230276,
-          "bias": 0.0024388479125432446,
-          "r2": 0.9655405555751995
+          "n": 4333,
+          "mae": 0.02108188725838841,
+          "rmse": 0.049987935066348084,
+          "bias": 0.004785040756228916,
+          "r2": 0.9788190356960864,
+          "mean_fold_mae": 0.02108778565763882
         },
         "wind_bin_curve": {
-          "n": 3738,
-          "mae": 0.028220158251182494,
-          "rmse": 0.06774498473672172,
-          "bias": 0.00850715418498419,
-          "r2": 0.9638342628591474
+          "n": 4333,
+          "mae": 0.022593534649222934,
+          "rmse": 0.04870063386931003,
+          "bias": 0.00210183668295386,
+          "r2": 0.9798959034159943,
+          "mean_fold_mae": 0.022535127443645765
+        },
+        "wind_median_curve": {
+          "n": 4333,
+          "mae": 0.02179191202842353,
+          "rmse": 0.04943907739760362,
+          "bias": 0.007022346055676808,
+          "r2": 0.9792816078240669,
+          "mean_fold_mae": 0.021719341416156574
+        },
+        "hgb_mae_smooth": {
+          "n": 4333,
+          "mae": 0.01685716154135407,
+          "rmse": 0.04599810035337213,
+          "bias": 0.006813573685342706,
+          "r2": 0.9820652582656662,
+          "mean_fold_mae": 0.016836719233654405
+        },
+        "hgb_mae_detailed": {
+          "n": 4333,
+          "mae": 0.017316031358611005,
+          "rmse": 0.04634822288815634,
+          "bias": 0.007382095023318985,
+          "r2": 0.9817911923630421,
+          "mean_fold_mae": 0.017306446816701626
+        },
+        "hgb_mae_weather_only": {
+          "n": 4333,
+          "mae": 0.016715509227675743,
+          "rmse": 0.0457956347466378,
+          "bias": 0.0040223671374969554,
+          "r2": 0.9822227942008094,
+          "mean_fold_mae": 0.016684809138912442
         }
       },
-      "selection_justification": "Selected hist_gradient_boosting: it had the lowest MAE on the chronological validation block; the later holdout was not used for selection.",
+      "selection_justification": "hgb_mae_weather_only: lowest mean MAE across 3 chronological folds, before final holdout.",
       "validation": {
-        "n": 3738,
-        "mae": 0.024225946020170298,
-        "rmse": 0.06612757917230276,
-        "bias": 0.0024388479125432446,
-        "r2": 0.9655405555751995
+        "n": 4333,
+        "mae": 0.016715509227675743,
+        "rmse": 0.0457956347466378,
+        "bias": 0.0040223671374969554,
+        "r2": 0.9822227942008094,
+        "mean_fold_mae": 0.016684809138912442
       },
       "holdout": {
-        "n": 4984,
-        "mae": 0.021614290917915027,
-        "rmse": 0.05279242168695177,
-        "bias": 0.005089790486483065,
-        "r2": 0.9764709330224423
+        "n": 744,
+        "mae": 0.024044680601789496,
+        "rmse": 0.06412733148059434,
+        "bias": 0.005630986709189416,
+        "r2": 0.9639213788408908
       },
       "holdout_candidates": {
+        "hgb_mae_weather_only": {
+          "n": 744,
+          "mae": 0.024044680601789496,
+          "rmse": 0.06412733148059434,
+          "bias": 0.005630986709189416,
+          "r2": 0.9639213788408908
+        },
         "hist_gradient_boosting": {
-          "n": 4984,
-          "mae": 0.021614290917915027,
-          "rmse": 0.05279242168695177,
-          "bias": 0.005089790486483065,
-          "r2": 0.9764709330224423
+          "n": 744,
+          "mae": 0.025009329269618786,
+          "rmse": 0.06264197579111257,
+          "bias": 0.0017506922606183727,
+          "r2": 0.9655733717411837
         },
         "wind_bin_curve": {
-          "n": 4984,
-          "mae": 0.025132035163444432,
-          "rmse": 0.05383329045245705,
-          "bias": 0.004411616642242681,
-          "r2": 0.9755339764576455
+          "n": 744,
+          "mae": 0.03935396160226773,
+          "rmse": 0.07209355807741438,
+          "bias": 0.0177047100927749,
+          "r2": 0.9544008743342309
         }
       },
       "conditional_interval": {
         "quantile": 0.9,
-        "symmetric_radius": 0.046139008508049306,
-        "validation_empirical_coverage": 0.9002140181915462
+        "symmetric_radius": 0.035447467294769,
+        "validation_empirical_coverage": 0.9000692360950843,
+        "holdout_empirical_coverage": 0.8198924731182796
+      },
+      "training_weather_ranges": {
+        "wind_speed": [
+          0.22666666666666666,
+          19.406666666666666
+        ],
+        "temperature": [
+          -18.648333333333333,
+          43.22333333333333
+        ]
       }
     }
   },
   "metrics": {
     "1": {
       "validation": {
-        "n": 3559,
-        "mae": 0.0329333002021237,
-        "rmse": 0.09157082939585802,
-        "bias": 0.003479232321206186,
-        "r2": 0.9339624942833082
+        "n": 4339,
+        "mae": 0.016600057182623144,
+        "rmse": 0.03673817565557264,
+        "bias": 0.004333785052365254,
+        "r2": 0.9886481238219046,
+        "mean_fold_mae": 0.016566514554964263
       },
       "holdout": {
-        "n": 4746,
-        "mae": 0.023298914886382967,
-        "rmse": 0.0511529696925829,
-        "bias": -0.0010894028163090808,
-        "r2": 0.9782470059082968
+        "n": 744,
+        "mae": 0.021694782345275877,
+        "rmse": 0.04805273961208144,
+        "bias": 0.00452483641825706,
+        "r2": 0.9797045854372579
       },
       "holdout_candidates": {
+        "hgb_mae_smooth": {
+          "n": 744,
+          "mae": 0.021694782345275877,
+          "rmse": 0.04805273961208144,
+          "bias": 0.00452483641825706,
+          "r2": 0.9797045854372579
+        },
         "hist_gradient_boosting": {
-          "n": 4746,
-          "mae": 0.023298914886382967,
-          "rmse": 0.0511529696925829,
-          "bias": -0.0010894028163090808,
-          "r2": 0.9782470059082968
+          "n": 744,
+          "mae": 0.023617399457170927,
+          "rmse": 0.048193521742779084,
+          "bias": 0.0020257919164480016,
+          "r2": 0.9795854905758811
         },
         "wind_bin_curve": {
-          "n": 4746,
-          "mae": 0.025276702991629187,
-          "rmse": 0.043967430725600214,
-          "bias": -0.0007601664114980148,
-          "r2": 0.9839291253286272
+          "n": 744,
+          "mae": 0.0356765707308758,
+          "rmse": 0.05815372960153445,
+          "bias": 0.011520238659621766,
+          "r2": 0.9702753488486666
         }
       }
     },
     "2": {
       "validation": {
-        "n": 3738,
-        "mae": 0.024225946020170298,
-        "rmse": 0.06612757917230276,
-        "bias": 0.0024388479125432446,
-        "r2": 0.9655405555751995
+        "n": 4333,
+        "mae": 0.016715509227675743,
+        "rmse": 0.0457956347466378,
+        "bias": 0.0040223671374969554,
+        "r2": 0.9822227942008094,
+        "mean_fold_mae": 0.016684809138912442
       },
       "holdout": {
-        "n": 4984,
-        "mae": 0.021614290917915027,
-        "rmse": 0.05279242168695177,
-        "bias": 0.005089790486483065,
-        "r2": 0.9764709330224423
+        "n": 744,
+        "mae": 0.024044680601789496,
+        "rmse": 0.06412733148059434,
+        "bias": 0.005630986709189416,
+        "r2": 0.9639213788408908
       },
       "holdout_candidates": {
+        "hgb_mae_weather_only": {
+          "n": 744,
+          "mae": 0.024044680601789496,
+          "rmse": 0.06412733148059434,
+          "bias": 0.005630986709189416,
+          "r2": 0.9639213788408908
+        },
         "hist_gradient_boosting": {
-          "n": 4984,
-          "mae": 0.021614290917915027,
-          "rmse": 0.05279242168695177,
-          "bias": 0.005089790486483065,
-          "r2": 0.9764709330224423
+          "n": 744,
+          "mae": 0.025009329269618786,
+          "rmse": 0.06264197579111257,
+          "bias": 0.0017506922606183727,
+          "r2": 0.9655733717411837
         },
         "wind_bin_curve": {
-          "n": 4984,
-          "mae": 0.025132035163444432,
-          "rmse": 0.05383329045245705,
-          "bias": 0.004411616642242681,
-          "r2": 0.9755339764576455
+          "n": 744,
+          "mae": 0.03935396160226773,
+          "rmse": 0.07209355807741438,
+          "bias": 0.0177047100927749,
+          "r2": 0.9544008743342309
         }
       }
     }
   },
   "limitations": [
-    "February 2026 turbine observations are absent; no February actual-power score is available.",
-    "Validation and holdout use observed wind and temperature, so they are conditional weather-to-power diagnostics, not day-ahead forecast skill.",
-    "Prediction intervals calibrate power-model residuals conditional on supplied weather and exclude weather-forecast uncertainty.",
-    "Input timestamps were treated as Asia/Almaty local time; normalized output is not kW or kWh."
+    "No February 2026 actual turbine power was supplied; February accuracy cannot be measured.",
+    "Scores use observed weather, not forecast weather; they are conditional power-model diagnostics, not 24–48 h forecast skill.",
+    "Residual bands exclude weather uncertainty and have no guaranteed coverage for operational forecasts.",
+    "CSV timezone=Asia/Almaty, timestamp=start, telemetry delay=0 are explicit unconfirmed assumptions.",
+    "Power normalization formula and rated capacities are unknown; predictions are dimensionless, not MW/MWh."
   ]
 }

@@ -1,0 +1,21 @@
+{
+  "framework": "unittest",
+  "tests_run": 13,
+  "failures": 0,
+  "errors": 0,
+  "passed": true,
+  "network_requested": false,
+  "data": "explicit synthetic arrays with known exact answers; no ML fitting",
+  "checks": [
+    "3h window and exclusive end",
+    "time zone conversion",
+    "ramp arithmetic",
+    "partial calendar days",
+    "first/second 24h blocks",
+    "normalized fleet comparison",
+    "live and archive warning separation",
+    "invalid modes",
+    "answer mode propagation",
+    "live projection excludes unconfirmed physical units"
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "verified_at": "2026-09-23T12:35:09.444873+00:00",
+  "model_version": "conditional-power-v2",
+  "turbines": {
+    "1": {
+      "raw_sha256": "c4c341582fb2dd348b7187f0128cff265fe055f469413871ebb5db50eef58b5b",
+      "raw_rows": 142360,
+      "missing_raw_local_ten_minute_timestamps": 9992,
+      "selected_candidate": "hgb_mae_smooth",
+      "january_hours": 744,
+      "metrics": {
+        "hgb_mae_smooth": {
+          "n": 744,
+          "mae": 0.021694782345275873,
+          "rmse": 0.04805273961208144,
+          "bias": 0.004524836418257049,
+          "r2": 0.9797045854372579
+        },
+        "hist_gradient_boosting": {
+          "n": 744,
+          "mae": 0.02361739945717093,
+          "rmse": 0.048193521742779084,
+          "bias": 0.002025791916447989,
+          "r2": 0.9795854905758811
+        },
+        "wind_bin_curve": {
+          "n": 744,
+          "mae": 0.03567657073087579,
+          "rmse": 0.05815372960153445,
+          "bias": 0.01152023865962175,
+          "r2": 0.9702753488486666
+        }
+      },
+      "relative_mae_improvement_against_original_algorithm": 0.08140680837370073,
+      "raw_threshold_diagnostic": {
+        "rows_below_2_5_ms": 27165,
+        "nonzero_normalized_targets_below_2_5_ms": 26671,
+        "mean_normalized_target_below_2_5_ms": 0.010537824406405301,
+        "rows_above_25_ms": 0,
+        "maximum_observed_wind_ms": 22.97
+      },
+      "posthoc_fixed_archive_physics_rule_on_holdout": {
+        "n": 744,
+        "mae": 0.023603601671432297,
+        "rmse": 0.048267946187478074,
+        "bias": 0.002591893226159296,
+        "r2": 0.9795223903243465
+      },
+      "physics_diagnostic_note": "Post-hoc audit of an inherited fixed rule, not another tuning or selection step; normalized zero is not proven equivalent to stopped generation."
+    },
+    "2": {
+      "raw_sha256": "820578cd18bb557cd30c2e102f3ae5a386dfc6c489a5a15743339c2b017305e5",
+      "raw_rows": 149499,
+      "missing_raw_local_ten_minute_timestamps": 2853,
+      "selected_candidate": "hgb_mae_weather_only",
+      "january_hours": 744,
+      "metrics": {
+        "hgb_mae_weather_only": {
+          "n": 744,
+          "mae": 0.024044680601789496,
+          "rmse": 0.06412733148059434,
+          "bias": 0.005630986709189413,
+          "r2": 0.9639213788408908
+        },
+        "hist_gradient_boosting": {
+          "n": 744,
+          "mae": 0.025009329269618786,
+          "rmse": 0.06264197579111257,
+          "bias": 0.0017506922606183631,
+          "r2": 0.9655733717411837
+        },
+        "wind_bin_curve": {
+          "n": 744,
+          "mae": 0.03935396160226772,
+          "rmse": 0.07209355807741438,
+          "bias": 0.01770471009277489,
+          "r2": 0.9544008743342309
+        }
+      },
+      "relative_mae_improvement_against_original_algorithm": 0.03857155293649317,
+      "raw_threshold_diagnostic": {
+        "rows_below_2_5_ms": 28708,
+        "nonzero_normalized_targets_below_2_5_ms": 26920,
+        "mean_normalized_target_below_2_5_ms": 0.009943221401699873,
+        "rows_above_25_ms": 0,
+        "maximum_observed_wind_ms": 21.43
+      },
+      "posthoc_fixed_archive_physics_rule_on_holdout": {
+        "n": 744,
+        "mae": 0.02583768344848065,
+        "rmse": 0.06427391694898704,
+        "bias": 0.0037569503984499087,
+        "r2": 0.9637562496850501
+      },
+      "physics_diagnostic_note": "Post-hoc audit of an inherited fixed rule, not another tuning or selection step; normalized zero is not proven equivalent to stopped generation."
+    }
+  },
+  "method": "Recompute archived pre-January holdout predictions; never score a production artifact fitted on January against January.",
+  "limitations": [
+    "Conditional observed-weather evaluation only.",
+    "No February actual power is present.",
+    "Timezone, interval convention and normalization formula remain unconfirmed."
+  ],
+  "status": "passed_model_revision_audit"
+}

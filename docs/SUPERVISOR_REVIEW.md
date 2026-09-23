@@ -1,29 +1,88 @@
-# Supervisor verification
+# Независимая проверка версии 2
 
-Three GPT-6 Luna agents with high reasoning implemented the model, backend and weather acquisition. The supervisor independently inspected their implementation, exercised the integrated system and recomputed reported operational errors from the original CSVs.
+Проверка выполнена 23 сентября 2026 года. Текущие результаты сохранены в
+`reports/supervisor_verification.json`. Этот документ заменяет старый отчёт:
+утверждения старой версии о 43 пройденных pytest-тестах и запущенном Uvicorn
+не относятся к этой проверке.
 
-## Corrections made during review
+## Что проверено
 
-- The replay API passed a requested horizon into the wrong positional argument. It now uses a keyword argument and has a 24-hour regression test.
-- Refreshing weather originally forced inference even when content was unchanged. Polling now fetches refreshed inputs and reuses predictions when content and model hashes match.
-- Weather caches originally trusted stored hashes and replaced their provenance with expected values. Cache reads now verify identity, parameters, units, availability and recomputed semantic hashes. Concurrent cache writes use unique temporary files followed by atomic replacement.
-- Prediction checks now reject wrong timestamps, nonfinite values, invalid normalized bounds and provenance ordering errors. Failures are stored in the audit history.
-- Ingestion checks ten-minute alignment and reports incomplete/missing hours and timezone-transition ambiguity. Training metadata records exact chronological split boundaries and candidate-selection evidence.
-- January evaluation now preserves successful run provenance and individual predictions, reports missing actuals, compares with an as-of persistence baseline, and includes farm metrics only when both turbines have observations.
+- SHA-256 обоих исходных CSV совпадают с метаданными обучения. Проверены хеши
+  production-моделей и отдельных моделей январской диагностики.
+- Почасовая фактическая мощность независимо восстановлена из исходных колонок,
+  без вызова основного загрузчика. Использованы записанные допущения: часовой пояс
+  `Asia/Almaty`, начало 10-минутного интервала, только полные часы из **6/6**
+  измерений. Количество сохранённых часов совпадает с отчётом качества.
+- Для финальной проверки на январе независимо пересчитаны показатели по 744 часам
+  каждой турбины: MAE T1 **0.021873**, T2 **0.024045**. Это условная модель
+  «фактическая погода → мощность», не точность прогноза погоды на 48 часов.
+  Выбор кандидатов сверён со средним MAE временных валидационных блоков;
+  валидационные блоки заканчиваются до финального отложенного периода.
+- Январская реконструкция с отдельной моделью: **7/7 срезов, 672 строки**.
+  Фактическая мощность, прогноз persistence и MAE/RMSE/bias пересчитаны независимо
+  и совпадают с сохранённым отчётом. MAE реконструкции составляет **0.132–0.141**
+  по шкале 0–1; погодные ошибки заметно больше условной ошибки модели мощности.
+- Февральская реконструкция: **28/28 срезов, 2 688 строк**. Проверены отсутствие
+  дубликатов, полные горизонты, шаг времени, диапазон мощности и интервалы.
+  JSON результатов совпадает с CSV; каждый результат сохраняет использованные
+  погодные признаки и явно сообщает `as_of_verified=false`.
+- Отдельная проверка погоды: 8 групп утверждений прошли. Проверены все 70
+  поставляемых 48-часовых горизонтов и 70 укороченных 24-часовых выборок без сети,
+  строгий отказ от неподтверждённого происхождения, пересчёт при изменении данных,
+  сохранение журнала и запрет изменения модели во время расчёта.
+- Проверка службы и чата: **9 групп unittest прошли, 1 пропущена**. Использованы
+  как фиксированные входы, так и реально обученные модели. Проверены JSON,
+  интервалы, CSV, ошибочные параметры, ответы локального чата по данным,
+  прозрачное переключение при недоступности LLM. Настоящий HTTP Handler проверен
+  через запросы в памяти: маршруты, JSON, запрет чужого Origin и отсутствие доступа
+  к CSV, весам моделей, SQLite и путям `../` через статические маршруты.
 
-## Executed checks
+## Что не запускалось
 
-- **43 tests passed**, including offline tests with real trained models and all 56 February turbine/origin weather caches. One upstream Starlette/httpx deprecation warning remains; it did not affect the tests.
-- February replay: **28/28 origins**, **2,688 turbine rows**, no missing horizons or invalid bounds.
-- Separate January backtest: **7/7 origins**, **672 matched rows**, no missing actuals. Training cutoff precedes every origin. Individual weather runs satisfy the recorded 12-hour availability assumption.
-- Independently reconstructed hourly actuals from the original CSV columns and recomputed model and persistence MAE. All recorded values matched.
-- Launched the real Uvicorn server and tested health, forecast creation, CSV export and the dashboard compatibility endpoint over localhost TCP. The process was terminated after the smoke test.
-- Python compilation succeeded. The PowerShell launcher and package command entry points were reviewed. Docker packaging is supplied but was not executed on this machine.
+Открытие localhost-сокета запрещено текущим sandbox (`Operation not permitted`).
+Поэтому настоящий HTTP smoke test по TCP не выполнен и повторные попытки открытия
+портов не предпринимались. FastAPI/pytest-набор не запускался: этих необязательных
+зависимостей нет в окружении. Проверка HTTP Handler в памяти не подменяет проверку
+сетевого сервера. Docker также не запускался.
 
-Run `python -m pytest -q` and `python scripts/verify_delivery.py` to repeat tests and the saved-output audit. In a filesystem sandbox, point pytest's `--basetemp` to a writable workspace directory.
+## Как повторить
 
-## Remaining evidence limits
+```bash
+python scripts/verify_weather.py
+python scripts/verify_service.py --real
+python scripts/verify_delivery.py
+```
 
-There is no February ground truth in either supplied dataset. The seven-origin January diagnostic is a small correlated sample, and weather-grid bias remains. Hub height, timezone, interval convention, forecast-publication delay and turbine capacities need confirmation for operational deployment. The system records these assumptions; it does not describe them as verified plant specifications.
+По умолчанию независимый аудит проверяет сохранённые данные и отчёты без сетевых
+запросов и открытия портов. На машине, где разрешён локальный сервер, можно явно
+запустить:
 
-The teammate's concurrent frontend commit was detected before publication. Its three frontend files were preserved byte for byte and its README retained under `docs/FRONTEND_README.md`. The new compatibility API exposes real forecasts using the documented field names, with explicit normalized units. The existing dashboard remains a labeled synthetic prototype until its mock generator and MW labels are changed together.
+```bash
+python scripts/verify_delivery.py --live-http
+```
+
+Эта опция запускает `python -m windagent serve` и проверяет реальный localhost HTTP.
+Для полного необязательного набора после установки тестовых зависимостей:
+`python -m pytest -q`.
+
+## Пределы выводов
+
+Февральских фактических значений мощности нет, поэтому февральская ошибка
+не вычисляется. Погодный архив описан поставщиком как hindcasts; назначенная
+задержка 12 часов не доказывает публикацию в прошлом. Эти реконструкции нельзя
+выдавать за подтверждённую эксплуатационную проверку без утечки будущих данных.
+Январские срезы перекрываются и не являются независимыми испытаниями.
+Часовой пояс CSV, смысл временной метки, высота измерения ветра и нормализация
+мощности остаются допущениями до ответа организаторов. Проверки подтверждают
+воспроизводимость вычислений и явное отражение ограничений, а не гарантию
+максимальной точности или готовность к управлению реальной ВЭС.
+
+## Дополнительные проверки версии 3
+
+- `scripts/verify_model_revision.py`: сравнение нового архива с действующими данными/моделями; совпадение исходных CSV, идентичность алгоритма baseline, проверка метрик и физического правила. Отчёт `reports/model_revision_audit.json`.
+- `scripts/verify_live.py`: 13 проверок времени, свежести, схемы, кэша и опциональных преобразований; дополнительный расчёт настоящими v2-артефактами на контролируемой погодной фикстуре. Это не свежая загрузка внешнего API.
+- `scripts/verify_chat_tools.py`: 13 проверок расчётов сравнения турбин, окна 3 ч, перепада, календарных дней, интервалов 24 ч и передачи режима.
+
+Фотографии предоставлены пользователем и служат оформлением, не документируют расположение реальных T1/T2. Баллы конкурса не прогнозируются; незакрытые требования перечислены в `CRITERIA.md`.
+
+- `scripts/verify_live_http.py`: 6 тестов настоящего HTTP Handler в памяти: маршруты live, чат, статус, CSV, JPEG-файлы и ошибочные параметры. Сокет и внешняя сеть не используются.

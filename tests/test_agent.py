@@ -41,6 +41,10 @@ def test_run_persists_auditable_forecast_and_reuses_unchanged_inputs(tmp_path):
     assert first["farm"]["label"].startswith("equal-weight normalized")
     assert isinstance(first["turbines"]["1"][0]["timestamp"], str)
     assert second["reused"] is True
+    assert first["as_of_verified"] is False
+    assert len(first["weather"]["1"]) == 24
+    assert first["weather"]["1"][0]["wind_speed"] == 5.0
+    assert first["warnings"]
     record = agent.store.get(first["id"])
     assert any(event["stage"] == "persist" for event in record["audit"])
 
@@ -117,3 +121,45 @@ def test_model_hash_change_recomputes_same_origin(tmp_path):
     assert calls["count"] == 4
     assert second["reused"] is False
     assert first["model"]["hash"] != second["model"]["hash"]
+
+
+def test_strict_mode_rejects_unverified_weather(tmp_path):
+    agent = make_agent(tmp_path)
+    agent.strict_as_of = True
+    with pytest.raises(ForecastError, match="Strict as-of mode"):
+        agent.run("2026-02-01T00:00:00+05:00", horizon=24)
+    assert agent.store.list(1)[0]["status"] == "failed"
+
+
+def test_training_labels_after_declared_cutoff_are_rejected(tmp_path):
+    agent = make_agent(tmp_path)
+    path = tmp_path / "artifacts" / "metadata.json"
+    metadata = json.loads(path.read_text())
+    metadata["turbines"] = {"1": {"training_last_hour_utc": "2026-01-31T19:00:00Z"}}
+    path.write_text(json.dumps(metadata))
+    with pytest.raises(ForecastError, match="Model training"):
+        agent.run("2026-02-01T00:00:00+05:00", horizon=24)
+
+
+def test_changed_weather_recomputes_and_retains_exact_inputs(tmp_path):
+    changed = [False]
+    def weather(*args, **kwargs):
+        return fixture_weather(*args, **kwargs, changed=changed[0])
+    agent = make_agent(tmp_path, weather)
+    first = agent.run("2026-02-01T00:00:00+05:00", horizon=24)
+    changed[0] = True
+    second = agent.watch_once("2026-02-01T00:00:00+05:00", horizon=24)
+    assert not second["reused"]
+    assert first["weather"]["1"][0]["wind_speed"] == 5.0
+    assert second["weather"]["1"][0]["wind_speed"] == 6.0
+
+
+def test_model_change_during_prediction_never_persists_success(tmp_path):
+    agent = make_agent(tmp_path)
+    def changing_predict(artifact_dir, turbine_id, frame):
+        (artifact_dir / "turbine_1.bin").write_bytes(b"changed-mid-run")
+        return fixture_predict(artifact_dir, turbine_id, frame)
+    agent.predict = changing_predict
+    with pytest.raises(ForecastError, match="artifacts changed"):
+        agent.run("2026-02-01T00:00:00+05:00", horizon=24)
+    assert agent.store.list(1)[0]["status"] == "failed"

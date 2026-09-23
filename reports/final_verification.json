@@ -1,0 +1,17 @@
+{
+  "verified_on": "2026-09-23",
+  "test_command": "python -m pytest -q -p no:cacheprovider --basetemp=work/pytest-final",
+  "pytest": {"passed": 88, "subtests_passed": 21, "warnings": ["Starlette/httpx deprecation"]},
+  "supervisor_independent_rerun": true,
+  "source_and_saved_output_audit": "reports/supervisor_verification.json",
+  "fresh_weather_proof": "reports/premium_live_proof.json",
+  "model_audit": "reports/model_revision_audit.json",
+  "browser": {
+    "server": "Python HTTP server, loopback port 8001",
+    "passed": ["Premium layout renders", "T1 live 48-hour forecast", "T2 live 24-hour forecast", "3-hour analyst answer", "Archive mode with explicit availability warning", "All four image assets loaded", "No browser console errors or warnings", "No horizontal overflow at 1280px"],
+    "standalone_preview": "Static validation only; local file navigation blocked by browser policy"
+  },
+  "training": "Production and separate January evaluation artifacts rebuilt from the supplied original CSV files",
+  "historical_reconstruction": {"february_origins": 28, "forecast_rows": 2688, "as_of_verified": false},
+  "limitations": ["Forecast generation is verified, future accuracy requires later measured actuals", "MW/MWh conversion assumes normalized target is a rated-capacity fraction", "Physics thresholds are assumptions outside the reported conditional model holdout metrics", "GitHub Actions was not used as proof because the organization reported a billing lock", "No public deployment performed"]
+}

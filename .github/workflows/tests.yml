@@ -1,4 +1,4 @@
-name: Backend tests
+name: Wind Agent checks
 on: [push, pull_request]
 jobs:
   test:
@@ -10,5 +10,12 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: python -m pip install -r requirements.lock.txt
+      - run: python -m pip install -e '.[test]'
       - run: python -m pytest -q
+      - run: python scripts/verify_weather.py
+      - run: python scripts/verify_service.py --real
+      - run: python scripts/verify_delivery.py
+      - run: python scripts/verify_live.py
+      - run: python scripts/verify_live_http.py
+      - run: python scripts/verify_chat_tools.py
       - run: python -m windagent --help

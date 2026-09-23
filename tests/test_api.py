@@ -88,10 +88,11 @@ def test_frontend_compatibility_forecast_uses_real_agent_contract(tmp_path, monk
     assert payload["date_timezone"] == "Asia/Almaty"
     assert payload["power_unit"] == "normalized" and payload["capacity_mw"] is None
     assert len(payload["forecast"]) == 24
-    assert set(payload["forecast"][0]) == {"timestamp", "predicted_power", "wind_speed", "temperature"}
+    assert set(payload["forecast"][0]) == {"timestamp", "predicted_power", "lower", "upper", "wind_speed", "temperature"}
     assert payload["forecast"][0]["predicted_power"] == 0.5
     assert payload["provenance"]["source"] == ["test"]
-    assert any("no MW" in warning for warning in payload["warnings"])
+    assert any("МВт" in warning and "недоступен" in warning for warning in payload["warnings"])
+    assert payload["as_of_verified"] is False
     assert len(payload["warning_details"]) >= 3
 
 
@@ -110,7 +111,7 @@ def test_frontend_compatibility_rejects_bad_query_values(tmp_path, monkeypatch):
         assert client.get("/api/forecast", params=params).status_code == 422
 
 
-def test_frontend_adapter_rejects_weather_provenance_race(tmp_path, monkeypatch):
+def test_frontend_adapter_uses_persisted_weather_without_second_fetch(tmp_path, monkeypatch):
     artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
     (artifacts / "metadata.json").write_text(json.dumps({"model_available_at": "2026-02-01T00:00:00+05:00"}))
@@ -127,5 +128,6 @@ def test_frontend_adapter_rejects_weather_provenance_race(tmp_path, monkeypatch)
     response = TestClient(api.app).get("/api/forecast", params={
         "turbine_id": "T1", "as_of_date": "2026-02-01", "horizon_hours": 24,
     })
-    assert response.status_code == 422
-    assert "provenance changed" in response.json()["detail"]
+    assert response.status_code == 200, response.text
+    assert calls["count"] == 2  # Once per turbine, no extra adapter acquisition.
+    assert response.json()["forecast"][0]["wind_speed"] == 6.0

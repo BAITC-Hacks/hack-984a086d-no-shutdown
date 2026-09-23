@@ -1,27 +1,101 @@
 {
+  "verified_at": "2026-09-23T12:33:09.513063+00:00",
+  "model_version": "conditional-power-v2",
   "source_hashes_match": true,
+  "artifact_hashes_match": true,
+  "hourly_minimum_samples": 6,
+  "timestamp_semantics_assumption": "start",
+  "timezone_assumption": "Asia/Almaty",
   "january_rows": 672,
   "january_metrics_recomputed": {
     "1:0-23": {
-      "mae": 0.1397913100942112,
+      "mae": 0.13767232026512982,
+      "rmse": 0.23129603761941747,
+      "bias": -0.10175435811318916,
       "persistence_mae": 0.28495039682539675
     },
     "1:24-47": {
-      "mae": 0.13548205884559153,
+      "mae": 0.13244681122054835,
+      "rmse": 0.2190768928754491,
+      "bias": -0.0881099543484993,
       "persistence_mae": 0.2291865079365079
     },
     "2:0-23": {
-      "mae": 0.13889713452773295,
+      "mae": 0.14050131149603118,
+      "rmse": 0.23645283475890447,
+      "bias": -0.1064546894323118,
       "persistence_mae": 0.29944444444444446
     },
     "2:24-47": {
-      "mae": 0.13332373142306095,
+      "mae": 0.13246405732667763,
+      "rmse": 0.22460205411566936,
+      "bias": -0.09341635538435539,
       "persistence_mae": 0.21441468253968252
     }
   },
+  "conditional_holdout_metrics_recomputed": {
+    "1": {
+      "n": 744,
+      "mae": 0.021694782345275873,
+      "rmse": 0.04805273961208144,
+      "selected_candidate": "hgb_mae_smooth",
+      "note": "Observed-weather conditional fit; not operational day-ahead accuracy."
+    },
+    "2": {
+      "n": 744,
+      "mae": 0.024044680601789496,
+      "rmse": 0.06412733148059434,
+      "selected_candidate": "hgb_mae_weather_only",
+      "note": "Observed-weather conditional fit; not operational day-ahead accuracy."
+    }
+  },
+  "january_origins": 7,
   "february_origins": 28,
   "february_rows": 2688,
-  "live_http_smoke": "passed: health, forecast, CSV, dashboard compatibility endpoint over localhost TCP",
+  "conditional_holdout_rows": 1488,
+  "as_of_verified": false,
+  "weather_provenance": "unverified_hindcast; 12-hour availability is assumed, not documented publication",
   "february_accuracy": "unavailable: supplied actual observations stop on January 31",
-  "status": "passed"
+  "live_http_smoke": {
+    "status": "not_run_in_this_script",
+    "reason": "This saved-output audit does not launch the local server; pass --live-http to request a TCP smoke test."
+  },
+  "fastapi_pytest_suite": {
+    "status": "not_run_in_this_script",
+    "reason": "This saved-output audit does not invoke pytest or start the optional FastAPI server."
+  },
+  "independent_service_checks": {
+    "tests_run": 10,
+    "failures": 0,
+    "errors": 0,
+    "skipped": [
+      {
+        "test": "test_socket_http_smoke_environment_blocked (__main__.ServiceChecks.test_socket_http_smoke_environment_blocked)",
+        "reason": "Root server bind was denied by sandbox (Operation not permitted); socket test not retried. Actual Handler is tested in memory."
+      }
+    ],
+    "passed": true,
+    "real_model_requested": true,
+    "framework": "Python unittest (no pytest dependency)",
+    "http_transport": "Actual BaseHTTPRequestHandler parsing with in-memory connection; socket bind unavailable"
+  },
+  "independent_weather_checks": {
+    "verification": "offline standalone Python assertions; pytest suite not invoked by this script",
+    "checks_passed": [
+      "70 archived horizons + 70 offline 24-hour subsets; explicit unverified provenance",
+      "strict fetch refuses unsupported historical availability",
+      "durable exact weather, warnings and atomic audit",
+      "unchanged watch input reuses predictions",
+      "changed weather recalculates, earlier stored inputs remain intact",
+      "strict agent rejects unverified weather and logs failure",
+      "training interval crossing cutoff is rejected",
+      "model modification during inference prevents success"
+    ],
+    "archive_horizons_validated": 70,
+    "subset_horizons_validated": 70,
+    "network_requested": false,
+    "as_of_verified": false,
+    "limitation": "Cache integrity does not prove contemporaneous publication; provider labels IFS history hindcasts."
+  },
+  "status": "passed_saved_output_audit"
 }

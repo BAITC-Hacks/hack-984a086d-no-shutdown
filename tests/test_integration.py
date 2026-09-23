@@ -1,4 +1,4 @@
-"""Supervisor checks using delivered models and actual archived weather, offline."""
+"""Offline integration checks; cached hindcasts are not proof of as-of issuance."""
 import json
 import shutil
 from pathlib import Path
@@ -29,6 +29,8 @@ def test_actual_models_and_archive_end_to_end(real_agent):
     result = real_agent.run('2026-02-01T00:00:00+05:00')
     assert result['status'] == 'succeeded'
     assert result['reused'] is False
+    assert result['as_of_verified'] is False
+    assert result['warnings']
     for key in ('1', '2'):
         rows = result['turbines'][key]
         assert len(rows) == 48
@@ -69,7 +71,7 @@ def test_real_http_forecast_detail_and_csv(real_agent):
         api.get_agent = original
 
 
-def test_all_february_archives_are_asof_safe(monkeypatch):
+def test_all_february_archives_pass_assumed_lag_but_remain_unverified(monkeypatch):
     monkeypatch.setattr('windagent.weather.urlopen', lambda *a, **kw: (_ for _ in ()).throw(AssertionError('Unexpected network')))
     for day in range(1, 29):
         origin = pd.Timestamp(f'2026-02-{day:02d}T00:00:00+05:00')
@@ -78,6 +80,8 @@ def test_all_february_archives_are_asof_safe(monkeypatch):
             assert len(frame) == 48
             assert np.isfinite(frame[['wind_speed', 'temperature']]).all().all()
             assert (frame['available_at'] <= origin).all()
+            assert not frame['as_of_verified'].any()
+            assert set(frame['provenance_status']) == {'unverified_hindcast'}
 
 
 @pytest.mark.parametrize('start,end', [('bad-date', None), ('2026-02-01T00:00:00+05:00', 'bad-date')])

@@ -1,0 +1,12 @@
+{
+  "tests_run": 13,
+  "failures": 0,
+  "errors": 0,
+  "passed": true,
+  "real_model_integration": "passed: delivered v2 artifacts with deterministic weather fixture (not live acquisition)",
+  "external_network_requested": false,
+  "live_api_acquisition": "not_run: fixtures validate transport logic; no live success claimed",
+  "default_units": "normalized",
+  "capacity_verified": false,
+  "physics_scenario_enabled": false
+}
