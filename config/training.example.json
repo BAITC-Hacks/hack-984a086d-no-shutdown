@@ -1,0 +1,11 @@
+{
+  "candidates": [
+    "hist_gradient_boosting",
+    "wind_bin_curve",
+    "wind_median_curve",
+    "hgb_mae_smooth",
+    "hgb_mae_detailed",
+    "hgb_mae_weather_only"
+  ],
+  "overrides": {}
+}

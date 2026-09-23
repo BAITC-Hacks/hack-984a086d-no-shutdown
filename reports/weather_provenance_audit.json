@@ -1,0 +1,18 @@
+{
+  "verification": "offline standalone Python assertions; pytest suite not invoked by this script",
+  "checks_passed": [
+    "70 archived horizons + 70 offline 24-hour subsets; explicit unverified provenance",
+    "strict fetch refuses unsupported historical availability",
+    "durable exact weather, warnings and atomic audit",
+    "unchanged watch input reuses predictions",
+    "changed weather recalculates, earlier stored inputs remain intact",
+    "strict agent rejects unverified weather and logs failure",
+    "training interval crossing cutoff is rejected",
+    "model modification during inference prevents success"
+  ],
+  "archive_horizons_validated": 70,
+  "subset_horizons_validated": 70,
+  "network_requested": false,
+  "as_of_verified": false,
+  "limitation": "Cache integrity does not prove contemporaneous publication; provider labels IFS history hindcasts."
+}

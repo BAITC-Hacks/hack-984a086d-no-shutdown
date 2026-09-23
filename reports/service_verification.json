@@ -1,0 +1,15 @@
+{
+  "tests_run": 10,
+  "failures": 0,
+  "errors": 0,
+  "skipped": [
+    {
+      "test": "test_socket_http_smoke_environment_blocked (__main__.ServiceChecks.test_socket_http_smoke_environment_blocked)",
+      "reason": "Root server bind was denied by sandbox (Operation not permitted); socket test not retried. Actual Handler is tested in memory."
+    }
+  ],
+  "passed": true,
+  "real_model_requested": true,
+  "framework": "Python unittest (no pytest dependency)",
+  "http_transport": "Actual BaseHTTPRequestHandler parsing with in-memory connection; socket bind unavailable"
+}
